@@ -1,0 +1,84 @@
+name: "Decrypt Secrets"
+description: "Decrypts secrets that are base64 encoded and encrypted with GPG"
+inputs:
+  modernisation_pat_multirepo:
+    description: "Encrypted Multirepo PAT Token"
+    required: false
+  gov_uk_notify_api_key:
+    description: "Encrypted notification API Key"
+    required: false
+  environment_management:
+    description: "Encrypted environment management secret"
+    required: false
+  pagerduty_token:
+    description: "Encrypted PagerDuty API token"
+    required: false
+  pagerduty_userapi_token:
+    description: "Encrypted PagerDuty user API token"
+    required: false
+  slack_webhooks:
+    description: "Encrypted Slack Webhooks"
+    required: false
+  slack_webhook_url:
+    description: "Encrypted Slack Webhook URL"
+    required: false
+  terraform_github_token:
+    description: "Encrypted GitHub CI user Personal Access Token"
+    required: false
+  PASSPHRASE:
+    description: "Passphrase used for GPG decryption"
+    required: true
+    
+runs:
+  using: "composite"
+  steps:
+    - name: Decrypt Secrets
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.modernisation_pat_multirepo }}" ]; then
+        modernisation_pat_multirepo_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.modernisation_pat_multirepo }}" | base64 --decode))
+        echo "::add-mask::$modernisation_pat_multirepo_decrypt"
+        echo "MODERNISATION_PAT_MULTIREPO=$modernisation_pat_multirepo" >> $GITHUB_ENV
+        fi
+
+        if [ -n "${{ inputs.gov_uk_notify_api_key }}" ]; then
+        gov_uk_notify_api_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.gov_uk_notify_api_key }}" | base64 --decode))
+        echo "::add-mask::$gov_uk_notify_api_key_decrypt"
+        echo "GOV_UK_NOTIFY_API_KEY=$gov_uk_notify_api_key" >> $GITHUB_ENV
+        fi
+
+        if [ -n "${{ inputs.environment_management }}" ]; then
+        environment_management_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.environment_management }}" | base64 --decode))
+        echo "::add-mask::$environment_management_decrypt"
+        echo "ENVIRONMENT_MANAGEMENT=$environment_management_decrypt" >> $GITHUB_ENV
+        fi
+        
+        if [ -n "${{ inputs.pagerduty_token }}" ]; then
+        pagerduty_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.pagerduty_token }}" | base64 --decode))
+        echo "::add-mask::$pagerduty_token_decrypt"
+        echo "TF_VAR_PAGERDUTY_TOKEN=$pagerduty_token_decrypt" >> $GITHUB_ENV
+        fi
+        
+        if [ -n "${{ inputs.pagerduty_userapi_token }}" ]; then
+        pagerduty_userapi_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.pagerduty_userapi_token }}" | base64 --decode))
+        echo "::add-mask::$pagerduty_userapi_token_decrypt"
+        echo "TF_VAR_PAGERDUTY_USERAPI_TOKEN=$pagerduty_userapi_token_decrypt" >> $GITHUB_ENV
+        fi
+
+        if [ -n "${{ inputs.slack_webhooks }}" ]; then
+        slack_webhooks_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.slack_webhooks }}" | base64 --decode))
+        echo "::add-mask::$slack_webhooks_decrypt"
+        echo "SLACK_WEBHOOKS=$slack_webhooks_decrypt" >> $GITHUB_ENV
+        fi
+
+        if [ -n "${{ inputs.slack_webhook_url }}" ]; then
+        slack_webhook_url_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.slack_webhook_url }}" | base64 --decode))
+        echo "::add-mask::$slack_webhook_url_decrypt"
+        echo "SLACK_WEBHOOK_URL=$slack_webhook_url_decrypt" >> $GITHUB_ENV
+        fi
+
+        if [ -n "${{ inputs.terraform_github_token }}" ]; then
+        terraform_github_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.terraform_github_token }}" | base64 --decode))
+        echo "::add-mask::$terraform_github_token_decrypt"
+        echo "TF_VAR_TERRAFORM_GITHUB_TOKEN=$terraform_github_token_decrypt" >> $GITHUB_ENV
+        fi
