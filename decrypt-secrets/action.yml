@@ -56,13 +56,13 @@ runs:
         if [ -n "${{ inputs.pagerduty_token }}" ]; then
         pagerduty_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.pagerduty_token }}" | base64 --decode))
         echo "::add-mask::$pagerduty_token_decrypt"
-        echo "TF_VAR_PAGERDUTY_TOKEN=$pagerduty_token_decrypt" >> $GITHUB_ENV
+        echo "PAGERDUTY_TOKEN=$pagerduty_token_decrypt" >> $GITHUB_ENV
         fi
 
         if [ -n "${{ inputs.pagerduty_userapi_token }}" ]; then
         pagerduty_userapi_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.pagerduty_userapi_token }}" | base64 --decode))
         echo "::add-mask::$pagerduty_userapi_token_decrypt"
-        echo "TF_VAR_PAGERDUTY_USERAPI_TOKEN=$pagerduty_userapi_token_decrypt" >> $GITHUB_ENV
+        echo "PAGERDUTY_USERAPI_TOKEN=$pagerduty_userapi_token_decrypt" >> $GITHUB_ENV
         fi
 
         if [ -n "${{ inputs.slack_webhooks }}" ]; then
@@ -80,5 +80,5 @@ runs:
         if [ -n "${{ inputs.terraform_github_token }}" ]; then
         terraform_github_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.terraform_github_token }}" | base64 --decode))
         echo "::add-mask::$terraform_github_token_decrypt"
-        echo "TF_VAR_TERRAFORM_GITHUB_TOKEN=$terraform_github_token_decrypt" >> $GITHUB_ENV
+        echo "TERRAFORM_GITHUB_TOKEN=$terraform_github_token_decrypt" >> $GITHUB_ENV
         fi
