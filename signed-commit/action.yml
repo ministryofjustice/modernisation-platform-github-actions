@@ -36,7 +36,7 @@ runs:
           echo "changes=true" >> $GITHUB_ENV
           git diff --staged --name-only > changed_files.txt
         fi
-      shell: bash  
+      shell: bash
 
     - name: Generate new branch
       run: |
