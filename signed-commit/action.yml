@@ -15,11 +15,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Set up Git user
-      run: |
-        chmod +x ./scripts/git-setup.sh
-        ./scripts/git-setup.sh
-      shell: bash
 
     - name: Check for changes
       run: |
