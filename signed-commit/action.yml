@@ -15,36 +15,10 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Check out repository
-      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      with:
-        token: ${{ inputs.github_token }}
-
     - name: Set up Git user
       run: |
         chmod +x ./scripts/git-setup.sh
         ./scripts/git-setup.sh
-      shell: bash
-
-    - name: Detect if running on a PR
-      id: context
-      run: |
-        if [ "${{ github.event_name }}" == "pull_request" ]; then
-          echo "is_pr=true" >> $GITHUB_ENV
-          echo "branch_name=${{ github.head_ref }}" >> $GITHUB_ENV
-        else
-          echo "is_pr=false" >> $GITHUB_ENV
-        fi
-      shell: bash
-
-    - name: Generate new branch if not running on a PR
-      if: env.is_pr == 'false'
-      run: |
-        date=$(date +%Y_%m_%d_%H_%M)
-        branch_name="signed_commit_$date"
-        git checkout -b $branch_name
-        git push -u origin $branch_name
-        echo "branch_name=$branch_name" >> $GITHUB_ENV
       shell: bash
 
     - name: Check for changes
@@ -62,6 +36,15 @@ runs:
           echo "changes=true" >> $GITHUB_ENV
           git diff --staged --name-only > changed_files.txt
         fi
+      shell: bash
+
+    - name: Generate new branch
+      run: |
+        date=$(date +%Y_%m_%d_%H_%M)
+        branch_name="signed_commit_$date"
+        git checkout -b $branch_name
+        git push -u origin $branch_name
+        echo "branch_name=$branch_name" >> $GITHUB_ENV
       shell: bash
 
     - name: Prepare the Changes for GraphQL
@@ -128,16 +111,4 @@ runs:
           echo "Error creating commit: $RESPONSE"
           exit 1
         fi
-      shell: bash
-
-    - name: Create a PR if not running on a PR
-      if: env.is_pr == 'false' && env.changes == 'true'
-      env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
-      run: |
-        gh pr create \
-          --base main \
-          --head ${{ env.branch_name }} \
-          --title "${{ inputs.pr_title || 'Automated Signed Commit Update' }}" \
-          --body "${{ inputs.pr_body || 'This PR was automatically created by a GitHub workflow to apply a signed commit update.' }}"
       shell: bash
