@@ -15,7 +15,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-
     - name: Check for changes
       run: |
         # Show the status and diff before attempting to pull/push
