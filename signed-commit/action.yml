@@ -15,22 +15,20 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Set up Git user
-      run: |
-        chmod +x ./scripts/git-setup.sh
-        ./scripts/git-setup.sh
-      shell: bash
-
     - name: Check for changes
       run: |
+        # Show the status and diff before attempting to pull/push
+        echo "===== Git Status & Diff ====="
         git status
         git diff
+
+        echo "===== Git Add ====="
         git add .
         changes=$(git diff --staged --name-only)
 
         if [ -z "$changes" ]; then
           echo "No changes detected."
-          exit 0
+          echo "changes=false" >> $GITHUB_ENV
         else
           echo "Changes detected."
           echo "changes=true" >> $GITHUB_ENV
@@ -38,7 +36,16 @@ runs:
         fi
       shell: bash
 
+    - name: Get latest commit OID
+      if: env.changes == 'true'
+      run: |
+        base_branch=$(git rev-parse --abbrev-ref HEAD)
+        commit_oid=$(git rev-parse origin/$base_branch)
+        echo "commit_oid=$commit_oid" >> $GITHUB_ENV
+      shell: bash
+
     - name: Generate new branch
+      if: env.changes == 'true'
       run: |
         date=$(date +%Y_%m_%d_%H_%M)
         branch_name="signed_commit_$date"
@@ -50,21 +57,25 @@ runs:
     - name: Prepare the Changes for GraphQL
       if: env.changes == 'true'
       run: |
-        commit_oid=$(git rev-parse HEAD)
-        echo "commit_oid=$commit_oid" >> $GITHUB_ENV
-
+        # Initialize an empty JSON object for the additions
         files_for_commit='{"additions": []}'
 
+        # Read the changed files from changed_files.txt
         while IFS= read -r file; do
           if [[ -f "$file" ]]; then
+            # Add a newline to the end of the content
             file_content="$(cat "$file")"
+
+            # Base64 encode the contents of the file
             base64_content=$(base64 -w 0 <<< "$file_content")
 
+            # Construct a JSON object for this file and append it to the additions array
             files_for_commit=$(echo "$files_for_commit" | jq --arg path "$file" --arg content "$base64_content" \
             '.additions += [{ "path": $path, "contents": $content }]')
           fi
         done < changed_files.txt
 
+        # Output the final JSON array
         echo "$files_for_commit" > files_for_commit.json
       shell: bash
 
@@ -111,4 +122,16 @@ runs:
           echo "Error creating commit: $RESPONSE"
           exit 1
         fi
+      shell: bash
+
+    - name: Create a PR if not running on a PR
+      if: env.changes == 'true' && github.event_name != 'pull_request'
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        gh pr create \
+          --base main \
+          --head ${{ env.branch_name }} \
+          --title "${{ inputs.pr_title || 'Automated Signed Commit Update' }}" \
+          --body "${{ inputs.pr_body || 'This PR was automatically created by a GitHub workflow to apply a signed commit update.' }}"
       shell: bash
