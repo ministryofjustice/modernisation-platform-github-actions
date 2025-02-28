@@ -129,3 +129,15 @@ runs:
           exit 1
         fi
       shell: bash
+
+    - name: Create a PR if not running on a PR
+      if: env.changes == 'true' && github.event_name != 'pull_request'
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        gh pr create \
+          --base main \
+          --head ${{ env.branch_name }} \
+          --title "${{ inputs.pr_title || 'Automated Signed Commit Update' }}" \
+          --body "${{ inputs.pr_body || 'This PR was automatically created by a GitHub workflow to apply a signed commit update.' }}"
+      shell: bash
