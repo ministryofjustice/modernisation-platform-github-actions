@@ -2,6 +2,10 @@ name: "Signed Commit Action"
 description: "Creates a signed commit using GitHub GraphQL and optionally creates a PR"
 author: "Aaron Robinson"
 inputs:
+  git_path:
+    description: "Path used by git to add files"
+    required: false
+    default: "."
   pr_title:
     description: "Title for the PR (only required if creating a new PR)"
     required: false
@@ -11,19 +15,46 @@ inputs:
   github_token:
     description: "GitHub token with permissions to commit and create PRs"
     required: true
+  # The following parameters support the signed commit changes to be pushed to a separate repository
+  remote_repository:
+    description: "The remote repository organisation & name if the changes are to be pushed to a remote repository"
+    required: false
+  remote_repository_path:
+    description: "Path to the remote repository's local git directory"
+    required: false
+  terraform_github_token:
+    description: "GitHub token for accessing the remote repository"
+    required: false
 
 runs:
   using: "composite"
   steps:
+
+    - name: Set github token for remote repository if required
+      run: |
+        echo "===== Set github token for remote repository if required ====="
+        if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
+          echo "GITHUB_TOKEN=${{ inputs.terraform_github_token }}" >> $GITHUB_ENV
+        else
+          echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
+        fi
+      shell: bash
+
+
     - name: Check for changes
       run: |
-        # Show the status and diff before attempting to pull/push
-        echo "===== Git Status & Diff ====="
+        # Show the status and diff before attempting to add files
+        echo "===== Check for changes ====="
+        if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+          git_path="${{ inputs.git_path }}"
+        else
+          git_path="${{ inputs.git_path }}"
+        fi
+
         git status
         git diff
-
-        echo "===== Git Add ====="
-        git add .
+        git add "$git_path"
         changes=$(git diff --staged --name-only)
 
         if [ -z "$changes" ]; then
@@ -33,12 +64,20 @@ runs:
           echo "Changes detected."
           echo "changes=true" >> $GITHUB_ENV
           git diff --staged --name-only > changed_files.txt
+          cat changed_files.txt
         fi
       shell: bash
 
-    - name: Get latest commit OID
+    - name: Get latest commit
       if: env.changes == 'true'
       run: |
+        echo "===== Get latest commit ====="
+        if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+          git_path="${{ inputs.git_path }}"
+        else
+          git_path="${{ inputs.git_path }}"
+        fi
         base_branch=$(git rev-parse --abbrev-ref HEAD)
         commit_oid=$(git rev-parse origin/$base_branch)
         echo "commit_oid=$commit_oid" >> $GITHUB_ENV
@@ -47,16 +86,33 @@ runs:
     - name: Generate new branch
       if: env.changes == 'true'
       run: |
+        echo "===== Generate new branch ====="
+        if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+          git_path="${{ inputs.git_path }}"
+        else
+          git_path="${{ inputs.git_path }}"
+        fi
         date=$(date +%Y_%m_%d_%H_%M)
         branch_name="signed_commit_$date"
         git checkout -b $branch_name
+        if [ ! -z "${{ inputs.remote_repository }}" ]; then
+          git remote set-url origin https://x-access-token:${{ env.GITHUB_TOKEN }}@github.com/${{ inputs.remote_repository }}.git
+        fi
         git push -u origin $branch_name
         echo "branch_name=$branch_name" >> $GITHUB_ENV
       shell: bash
 
-    - name: Prepare the Changes for GraphQL
+    - name: Prepare the changes for GraphQL
       if: env.changes == 'true'
       run: |
+        echo "===== Prepare the changes for GraphQL ====="
+        if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+          git_path="${{ inputs.git_path }}"
+        else
+          git_path="${{ inputs.git_path }}"
+        fi
         # Initialize an empty JSON object for the additions
         files_for_commit='{"additions": []}'
 
@@ -82,13 +138,22 @@ runs:
     - name: Create signed commit using GraphQL
       if: env.changes == 'true'
       env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
+        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
       run: |
+        echo "===== Create signed commit using GraphQL ====="
+        if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+          git_path="${{ inputs.git_path }}"
+          github_repo="${{ inputs.remote_repository }}"
+        else
+          git_path="${{ inputs.git_path }}"
+          github_repo="${{ github.repository }}"
+        fi
         commit_message="Automated signed commit update"
         files_for_commit=$(cat files_for_commit.json)
 
         mutation_payload=$(jq -n \
-          --arg repository "${{ github.repository }}" \
+          --arg repository "$github_repo" \
           --arg branch_name "$branch_name" \
           --arg commit_oid "$commit_oid" \
           --arg commit_message "$commit_message" \
@@ -127,9 +192,15 @@ runs:
     - name: Create a PR if not running on a PR
       if: env.changes == 'true' && github.event_name != 'pull_request'
       env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
+        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
       run: |
-        gh pr create \
+        echo "===== Create a PR if not running on a PR ====="
+        repo_option=""
+        if [ ! -z "${{ inputs.remote_repository }}" ]; then
+          repo_option="--repo github.com/${{ inputs.remote_repository }}"
+        fi
+
+        gh pr create $repo_option \
           --base main \
           --head ${{ env.branch_name }} \
           --title "${{ inputs.pr_title || 'Automated Signed Commit Update' }}" \
