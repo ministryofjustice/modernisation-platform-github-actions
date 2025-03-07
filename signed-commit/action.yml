@@ -74,9 +74,6 @@ runs:
         echo "===== Get latest commit ====="
         if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
-          git_path="${{ inputs.git_path }}"
-        else
-          git_path="${{ inputs.git_path }}"
         fi
         base_branch=$(git rev-parse --abbrev-ref HEAD)
         commit_oid=$(git rev-parse origin/$base_branch)
@@ -89,9 +86,6 @@ runs:
         echo "===== Generate new branch ====="
         if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
-          git_path="${{ inputs.git_path }}"
-        else
-          git_path="${{ inputs.git_path }}"
         fi
         date=$(date +%Y_%m_%d_%H_%M)
         branch_name="signed_commit_$date"
@@ -109,9 +103,6 @@ runs:
         echo "===== Prepare the changes for GraphQL ====="
         if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
-          git_path="${{ inputs.git_path }}"
-        else
-          git_path="${{ inputs.git_path }}"
         fi
         # Initialize an empty JSON object for the additions
         files_for_commit='{"additions": []}'
@@ -143,10 +134,8 @@ runs:
         echo "===== Create signed commit using GraphQL ====="
         if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
-          git_path="${{ inputs.git_path }}"
           github_repo="${{ inputs.remote_repository }}"
         else
-          git_path="${{ inputs.git_path }}"
           github_repo="${{ github.repository }}"
         fi
         commit_message="Automated signed commit update"
