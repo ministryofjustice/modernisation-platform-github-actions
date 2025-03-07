@@ -29,7 +29,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-
     - name: Set github token for remote repository if required
       run: |
         echo "===== Set github token for remote repository if required ====="
@@ -39,7 +38,6 @@ runs:
           echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
         fi
       shell: bash
-
 
     - name: Check for changes
       run: |
