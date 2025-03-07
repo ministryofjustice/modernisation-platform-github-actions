@@ -26,7 +26,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-
     - name: Set github token for the target repository
       run: |
         echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
