@@ -22,21 +22,13 @@ inputs:
   remote_repository_path:
     description: "Path to the remote repository's local git directory"
     required: false
-  terraform_github_token:
-    description: "GitHub token for accessing the remote repository"
-    required: false
 
 runs:
   using: "composite"
   steps:
-    - name: Set github token for remote repository if required
+    - name: Set github token for the target repository
       run: |
-        echo "===== Set github token for remote repository if required ====="
-        if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
-          echo "GITHUB_TOKEN=${{ inputs.terraform_github_token }}" >> $GITHUB_ENV
-        else
-          echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
-        fi
+        echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
       shell: bash
 
     - name: Check for changes
