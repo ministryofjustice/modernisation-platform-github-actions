@@ -38,13 +38,13 @@ runs:
         if [ -n "${{ inputs.modernisation_pat_multirepo }}" ]; then
         modernisation_pat_multirepo_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.modernisation_pat_multirepo }}" | base64 --decode))
         echo "::add-mask::$modernisation_pat_multirepo_decrypt"
-        echo "MODERNISATION_PAT_MULTIREPO=$modernisation_pat_multirepo" >> $GITHUB_ENV
+        echo "MODERNISATION_PAT_MULTIREPO=$modernisation_pat_multirepo_decrypt" >> $GITHUB_ENV
         fi
 
         if [ -n "${{ inputs.gov_uk_notify_api_key }}" ]; then
         gov_uk_notify_api_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.gov_uk_notify_api_key }}" | base64 --decode))
         echo "::add-mask::$gov_uk_notify_api_key_decrypt"
-        echo "GOV_UK_NOTIFY_API_KEY=$gov_uk_notify_api_key" >> $GITHUB_ENV
+        echo "GOV_UK_NOTIFY_API_KEY=$gov_uk_notify_api_key_decrypt" >> $GITHUB_ENV
         fi
 
         if [ -n "${{ inputs.environment_management }}" ]; then
