@@ -67,8 +67,9 @@ runs:
 
         if [ -n "${{ inputs.slack_webhooks }}" ]; then
         slack_webhooks_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.slack_webhooks }}" | base64 --decode))
-        echo "::add-mask::$slack_webhooks_decrypt"
-        echo "SLACK_WEBHOOKS=$slack_webhooks_decrypt" >> $GITHUB_ENV
+        slack_webhooks_escaped=$(echo "$slack_webhooks_decrypt" | jq -c .)
+        echo "::add-mask::$slack_webhooks_escaped"
+        echo "SLACK_WEBHOOKS=$slack_webhooks_escaped" >> $GITHUB_ENV
         fi
 
         if [ -n "${{ inputs.slack_webhook_url }}" ]; then
