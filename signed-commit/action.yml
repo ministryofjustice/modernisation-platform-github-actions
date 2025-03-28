@@ -74,7 +74,7 @@ runs:
         else
           commit_oid=$(git rev-parse origin/$base_branch)
         fi
-        
+
         echo "commit_oid=$commit_oid" >> $GITHUB_ENV
       shell: bash
 
