@@ -66,12 +66,20 @@ runs:
           cd "${{ inputs.remote_repository_path }}"
         fi
         base_branch=$(git rev-parse --abbrev-ref HEAD)
-        commit_oid=$(git rev-parse origin/$base_branch)
+
+        # Check if remote branch exists
+        if ! git rev-parse origin/$base_branch; then
+          echo "No remote branch detected. Using local branch."
+          commit_oid=$(git rev-parse $base_branch)
+        else
+          commit_oid=$(git rev-parse origin/$base_branch)
+        fi
+        
         echo "commit_oid=$commit_oid" >> $GITHUB_ENV
       shell: bash
 
     - name: Generate new branch
-      if: env.changes == 'true'
+      if: env.changes == 'true' && github.event_name != 'pull_request'
       run: |
         echo "===== Generate new branch ====="
         if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
@@ -85,6 +93,14 @@ runs:
         fi
         git push -u origin $branch_name
         echo "branch_name=$branch_name" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Use current branch if on a PR
+      if: env.changes == 'true' && github.event_name == 'pull_request'
+      run: |
+        echo "===== Using current branch ====="
+        current_branch=$(git rev-parse --abbrev-ref HEAD)
+        echo "branch_name=$current_branch" >> $GITHUB_ENV
       shell: bash
 
     - name: Prepare the changes for GraphQL
