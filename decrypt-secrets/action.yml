@@ -25,6 +25,12 @@ inputs:
   terraform_github_token:
     description: "Encrypted GitHub CI user Personal Access Token"
     required: false
+  testing_test_access_key_id:
+    description: "Encrypted Access Key ID for testing_test account use"
+    required: false
+  testing_test_access_key:
+    description: "Encrypted Access Key for testing_test account use"
+    required: false
   PASSPHRASE:
     description: "Passphrase used for GPG decryption"
     required: true
@@ -82,4 +88,16 @@ runs:
         terraform_github_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.terraform_github_token }}" | base64 --decode))
         echo "::add-mask::$terraform_github_token_decrypt"
         echo "TERRAFORM_GITHUB_TOKEN=$terraform_github_token_decrypt" >> $GITHUB_ENV
+        fi
+
+        if [ -n "${{ inputs.testing_test_access_key_id }}" ]; then
+        testing_test_access_key_id_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_test_access_key_id }}" | base64 --decode))
+        echo "::add-mask::$testing_test_access_key_id_decrypt"
+        echo "TESTING_TEST_ACCESS_KEY_ID=$testing_test_access_key_id_decrypt" >> $GITHUB_ENV
+        fi
+
+        if [ -n "${{ inputs.testing_test_access_key }}" ]; then
+        testing_test_access_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_test_access_key }}" | base64 --decode))
+        echo "::add-mask::$testing_test_access_key_decrypt"
+        echo "TESTING_TEST_ACCESS_KEY=$testing_test_access_key_decrypt" >> $GITHUB_ENV
         fi
