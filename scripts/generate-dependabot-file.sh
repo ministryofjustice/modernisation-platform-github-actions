@@ -32,8 +32,8 @@ EOF
       interval: "daily"
 EOF
 
-# Docker (one entry per Dockerfile)
-docker_dirs=$(find . -name Dockerfile | sed 's|^\./||' | xargs -n1 dirname | sort -u)
+# Docker
+docker_dirs=$(find . -name Dockerfile | sed 's|^\./||' | xargs -n1 dirname | awk -F/ '{print $1}' | sort -u)
 if [[ -n "$docker_dirs" ]]; then
   echo "  - package-ecosystem: \"docker\"" >> "$dependabot_file"
   echo "    directories:" >> "$dependabot_file"
