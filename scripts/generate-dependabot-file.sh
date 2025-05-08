@@ -3,7 +3,9 @@
 set -euo pipefail
 
 dependabot_file=".github/dependabot.yml"
-mkdir -p "$(dirname "$dependabot_file")"
+
+# Clear the dependabot file
+> "$dependabot_file"
 
 echo "Generating dependabot.yml..."
 
