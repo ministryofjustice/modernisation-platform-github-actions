@@ -20,6 +20,15 @@ permissions:
   pull-requests: write
 
 jobs:
+
+  fetch-secrets:
+    uses: ministryofjustice/modernisation-platform-github-actions/.github/workflows/aws-secrets-management.yml@cf6e13565dc769b53644a230561ea14bfbc70008 # v3.0.0
+    secrets:
+      MODERNISATION_PLATFORM_ACCOUNT_NUMBER: ${{ secrets.MODERNISATION_PLATFORM_ACCOUNT_NUMBER }}
+      PASSPHRASE: ${{ secrets.PASSPHRASE }}
+    permissions:
+      id-token: write
+      
   create-and-commit-dependabot-file:    
     runs-on: ubuntu-latest
     steps:
