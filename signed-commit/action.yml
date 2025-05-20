@@ -1,6 +1,7 @@
 name: "Signed Commit Action"
 description: "Creates a signed commit using GitHub GraphQL and optionally creates a PR"
 author: "Aaron Robinson"
+
 inputs:
   git_path:
     description: "Path used by git to add files"
@@ -27,8 +28,7 @@ runs:
   using: "composite"
   steps:
     - name: Set github token for the target repository
-      run: |
-        echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
+      run: echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
       shell: bash
 
     - name: Check for changes
@@ -120,11 +120,11 @@ runs:
             file_content="$(cat "$file")"
 
             # Base64 encode the contents of the file
-            base64_content=$(base64 -w 0 <<< "$file_content")
+            base64_content=$(base64 < "$file" | tr -d '\n')
 
             # Construct a JSON object for this file and append it to the additions array
             files_for_commit=$(echo "$files_for_commit" | jq --arg path "$file" --arg content "$base64_content" \
-            '.additions += [{ "path": $path, "contents": $content }]')
+              '.additions += [{ "path": $path, "contents": $content }]')
           fi
         done < changed_files.txt
 
@@ -144,15 +144,15 @@ runs:
         else
           github_repo="${{ github.repository }}"
         fi
-        commit_message="Automated signed commit update"
-        files_for_commit=$(cat files_for_commit.json)
 
-        mutation_payload=$(jq -n \
+        commit_message="Automated signed commit update"
+
+        jq -n \
           --arg repository "$github_repo" \
           --arg branch_name "$branch_name" \
           --arg commit_oid "$commit_oid" \
           --arg commit_message "$commit_message" \
-          --argjson fileChanges "$files_for_commit" \
+          --slurpfile fileChanges files_for_commit.json \
           '{
             query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }",
             variables: {
@@ -164,15 +164,15 @@ runs:
                 message: {
                   headline: $commit_message
                 },
-                fileChanges: $fileChanges,
+                fileChanges: $fileChanges[0],
                 expectedHeadOid: $commit_oid
               }
             }
-          }')
+          }' > mutation_payload.json
 
         RESPONSE=$(curl -X POST -H "Authorization: bearer $GITHUB_TOKEN" \
           -H "Content-Type: application/json" \
-          -d "$mutation_payload" https://api.github.com/graphql)
+          --data @mutation_payload.json https://api.github.com/graphql)
 
         COMMIT_OID=$(echo "$RESPONSE" | jq -r ".data.createCommitOnBranch.commit.oid")
 
@@ -182,6 +182,13 @@ runs:
           echo "Error creating commit: $RESPONSE"
           exit 1
         fi
+      shell: bash
+
+    - name: Set PR title and body
+      if: env.changes == 'true' && github.event_name != 'pull_request'
+      run: |
+        echo "pr_title=${{ inputs.pr_title }}" >> $GITHUB_ENV
+        echo "pr_body=${{ inputs.pr_body }}" >> $GITHUB_ENV
       shell: bash
 
     - name: Create a PR if not running on a PR
@@ -195,9 +202,12 @@ runs:
           repo_option="--repo github.com/${{ inputs.remote_repository }}"
         fi
 
+        pr_title="${pr_title:-Automated Signed Commit Update}"
+        pr_body="${pr_body:-This PR was automatically created by a GitHub workflow to apply a signed commit update.}"
+
         gh pr create $repo_option \
           --base main \
           --head ${{ env.branch_name }} \
-          --title "${{ inputs.pr_title || 'Automated Signed Commit Update' }}" \
-          --body "${{ inputs.pr_body || 'This PR was automatically created by a GitHub workflow to apply a signed commit update.' }}"
+          --title "$pr_title" \
+          --body "$pr_body"
       shell: bash
