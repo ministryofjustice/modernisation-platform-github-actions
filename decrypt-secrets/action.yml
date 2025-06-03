@@ -25,6 +25,9 @@ inputs:
   terraform_github_token:
     description: "Encrypted GitHub CI user Personal Access Token"
     required: false
+  github_ci_user_environments_repo_pat:
+    description: "Encrypted GitHub CI user environments repo Personal Access Token"
+    required: false
   PASSPHRASE:
     description: "Passphrase used for GPG decryption"
     required: true
@@ -82,4 +85,10 @@ runs:
         terraform_github_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.terraform_github_token }}" | base64 --decode))
         echo "::add-mask::$terraform_github_token_decrypt"
         echo "TERRAFORM_GITHUB_TOKEN=$terraform_github_token_decrypt" >> $GITHUB_ENV
+        fi
+
+        if [ -n "${{ inputs.github_ci_user_environments_repo_pat }}" ]; then
+        github_ci_user_environments_repo_pat_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.github_ci_user_environments_repo_pat }}" | base64 --decode))
+        echo "::add-mask::$github_ci_user_environments_repo_pat_decrypt"
+        echo "GITHUB_CI_USER_ENVIRONMENTS_REPO_PAT=$github_ci_user_environments_repo_pat_decrypt" >> $GITHUB_ENV
         fi
