@@ -28,6 +28,9 @@ inputs:
   github_ci_user_environments_repo_pat:
     description: "Encrypted GitHub CI user environments repo Personal Access Token"
     required: false
+  securityhub_slack_webhooks:
+    description: "Stores Slack channel webhook URLs for sending Security Hub findings notifications"
+    required: false
   PASSPHRASE:
     description: "Passphrase used for GPG decryption"
     required: true
@@ -91,4 +94,10 @@ runs:
         github_ci_user_environments_repo_pat_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.github_ci_user_environments_repo_pat }}" | base64 --decode))
         echo "::add-mask::$github_ci_user_environments_repo_pat_decrypt"
         echo "GITHUB_CI_USER_ENVIRONMENTS_REPO_PAT=$github_ci_user_environments_repo_pat_decrypt" >> $GITHUB_ENV
+        fi
+
+        if [ -n "${{ inputs.securityhub_slack_webhooks }}" ]; then
+        securityhub_slack_webhooks_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.securityhub_slack_webhooks }}" | base64 --decode))
+        echo "::add-mask::$securityhub_slack_webhooks_decrypt"
+        echo "SECURITYHUB_SLACK_WEBHOOKS=$securityhub_slack_webhooks_decrypt" >> $GITHUB_ENV
         fi
