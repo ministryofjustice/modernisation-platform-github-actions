@@ -31,6 +31,9 @@ inputs:
   securityhub_slack_webhooks:
     description: "Stores Slack channel webhook URLs for sending Security Hub findings notifications"
     required: false
+  testing_ci_iam_user_keys:
+    description: "Encrypted Testing CI IAM User Keys"
+    required: false
   PASSPHRASE:
     description: "Passphrase used for GPG decryption"
     required: true
@@ -38,66 +41,72 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Decrypt Secrets
-      shell: bash
-      run: |
-        if [ -n "${{ inputs.modernisation_pat_multirepo }}" ]; then
-        modernisation_pat_multirepo_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.modernisation_pat_multirepo }}" | base64 --decode))
-        echo "::add-mask::$modernisation_pat_multirepo_decrypt"
-        echo "MODERNISATION_PAT_MULTIREPO=$modernisation_pat_multirepo_decrypt" >> $GITHUB_ENV
-        fi
+  - name: Decrypt Secrets
+    shell: bash
+    run: |
+      if [ -n "${{ inputs.modernisation_pat_multirepo }}" ]; then
+      modernisation_pat_multirepo_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.modernisation_pat_multirepo }}" | base64 --decode))
+      echo "::add-mask::$modernisation_pat_multirepo_decrypt"
+      echo "MODERNISATION_PAT_MULTIREPO=$modernisation_pat_multirepo_decrypt" >> $GITHUB_ENV
+      fi
 
-        if [ -n "${{ inputs.gov_uk_notify_api_key }}" ]; then
-        gov_uk_notify_api_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.gov_uk_notify_api_key }}" | base64 --decode))
-        echo "::add-mask::$gov_uk_notify_api_key_decrypt"
-        echo "GOV_UK_NOTIFY_API_KEY=$gov_uk_notify_api_key_decrypt" >> $GITHUB_ENV
-        fi
+      if [ -n "${{ inputs.gov_uk_notify_api_key }}" ]; then
+      gov_uk_notify_api_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.gov_uk_notify_api_key }}" | base64 --decode))
+      echo "::add-mask::$gov_uk_notify_api_key_decrypt"
+      echo "GOV_UK_NOTIFY_API_KEY=$gov_uk_notify_api_key_decrypt" >> $GITHUB_ENV
+      fi
 
-        if [ -n "${{ inputs.environment_management }}" ]; then
-        environment_management_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.environment_management }}" | base64 --decode))
-        echo "::add-mask::$environment_management_decrypt"
-        echo "ENVIRONMENT_MANAGEMENT=$environment_management_decrypt" >> $GITHUB_ENV
-        fi
+      if [ -n "${{ inputs.environment_management }}" ]; then
+      environment_management_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.environment_management }}" | base64 --decode))
+      echo "::add-mask::$environment_management_decrypt"
+      echo "ENVIRONMENT_MANAGEMENT=$environment_management_decrypt" >> $GITHUB_ENV
+      fi
 
-        if [ -n "${{ inputs.pagerduty_token }}" ]; then
-        pagerduty_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.pagerduty_token }}" | base64 --decode))
-        echo "::add-mask::$pagerduty_token_decrypt"
-        echo "PAGERDUTY_TOKEN=$pagerduty_token_decrypt" >> $GITHUB_ENV
-        fi
+      if [ -n "${{ inputs.pagerduty_token }}" ]; then
+      pagerduty_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.pagerduty_token }}" | base64 --decode))
+      echo "::add-mask::$pagerduty_token_decrypt"
+      echo "PAGERDUTY_TOKEN=$pagerduty_token_decrypt" >> $GITHUB_ENV
+      fi
 
-        if [ -n "${{ inputs.pagerduty_userapi_token }}" ]; then
-        pagerduty_userapi_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.pagerduty_userapi_token }}" | base64 --decode))
-        echo "::add-mask::$pagerduty_userapi_token_decrypt"
-        echo "PAGERDUTY_USERAPI_TOKEN=$pagerduty_userapi_token_decrypt" >> $GITHUB_ENV
-        fi
+      if [ -n "${{ inputs.pagerduty_userapi_token }}" ]; then
+      pagerduty_userapi_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.pagerduty_userapi_token }}" | base64 --decode))
+      echo "::add-mask::$pagerduty_userapi_token_decrypt"
+      echo "PAGERDUTY_USERAPI_TOKEN=$pagerduty_userapi_token_decrypt" >> $GITHUB_ENV
+      fi
 
-        if [ -n "${{ inputs.slack_webhooks }}" ]; then
-        slack_webhooks_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.slack_webhooks }}" | base64 --decode))
-        slack_webhooks_escaped=$(echo "$slack_webhooks_decrypt" | jq -c .)
-        echo "::add-mask::$slack_webhooks_escaped"
-        echo "SLACK_WEBHOOKS=$slack_webhooks_escaped" >> $GITHUB_ENV
-        fi
+      if [ -n "${{ inputs.slack_webhooks }}" ]; then
+      slack_webhooks_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.slack_webhooks }}" | base64 --decode))
+      slack_webhooks_escaped=$(echo "$slack_webhooks_decrypt" | jq -c .)
+      echo "::add-mask::$slack_webhooks_escaped"
+      echo "SLACK_WEBHOOKS=$slack_webhooks_escaped" >> $GITHUB_ENV
+      fi
 
-        if [ -n "${{ inputs.slack_webhook_url }}" ]; then
-        slack_webhook_url_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.slack_webhook_url }}" | base64 --decode))
-        echo "::add-mask::$slack_webhook_url_decrypt"
-        echo "SLACK_WEBHOOK_URL=$slack_webhook_url_decrypt" >> $GITHUB_ENV
-        fi
+      if [ -n "${{ inputs.slack_webhook_url }}" ]; then
+      slack_webhook_url_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.slack_webhook_url }}" | base64 --decode))
+      echo "::add-mask::$slack_webhook_url_decrypt"
+      echo "SLACK_WEBHOOK_URL=$slack_webhook_url_decrypt" >> $GITHUB_ENV
+      fi
 
-        if [ -n "${{ inputs.terraform_github_token }}" ]; then
-        terraform_github_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.terraform_github_token }}" | base64 --decode))
-        echo "::add-mask::$terraform_github_token_decrypt"
-        echo "TERRAFORM_GITHUB_TOKEN=$terraform_github_token_decrypt" >> $GITHUB_ENV
-        fi
+      if [ -n "${{ inputs.terraform_github_token }}" ]; then
+      terraform_github_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.terraform_github_token }}" | base64 --decode))
+      echo "::add-mask::$terraform_github_token_decrypt"
+      echo "TERRAFORM_GITHUB_TOKEN=$terraform_github_token_decrypt" >> $GITHUB_ENV
+      fi
 
-        if [ -n "${{ inputs.github_ci_user_environments_repo_pat }}" ]; then
-        github_ci_user_environments_repo_pat_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.github_ci_user_environments_repo_pat }}" | base64 --decode))
-        echo "::add-mask::$github_ci_user_environments_repo_pat_decrypt"
-        echo "GITHUB_CI_USER_ENVIRONMENTS_REPO_PAT=$github_ci_user_environments_repo_pat_decrypt" >> $GITHUB_ENV
-        fi
+      if [ -n "${{ inputs.github_ci_user_environments_repo_pat }}" ]; then
+      github_ci_user_environments_repo_pat_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.github_ci_user_environments_repo_pat }}" | base64 --decode))
+      echo "::add-mask::$github_ci_user_environments_repo_pat_decrypt"
+      echo "GITHUB_CI_USER_ENVIRONMENTS_REPO_PAT=$github_ci_user_environments_repo_pat_decrypt" >> $GITHUB_ENV
+      fi
 
-        if [ -n "${{ inputs.securityhub_slack_webhooks }}" ]; then
-        securityhub_slack_webhooks_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.securityhub_slack_webhooks }}" | base64 --decode))
-        echo "::add-mask::$securityhub_slack_webhooks_decrypt"
-        echo "SECURITYHUB_SLACK_WEBHOOKS=$securityhub_slack_webhooks_decrypt" >> $GITHUB_ENV
-        fi
+      if [ -n "${{ inputs.securityhub_slack_webhooks }}" ]; then
+      securityhub_slack_webhooks_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.securityhub_slack_webhooks }}" | base64 --decode))
+      echo "::add-mask::$securityhub_slack_webhooks_decrypt"
+      echo "SECURITYHUB_SLACK_WEBHOOKS=$securityhub_slack_webhooks_decrypt" >> $GITHUB_ENV
+      fi
+
+      if [ -n "${{ inputs.testing_ci_iam_user_keys }}" ]; then
+      testing_ci_iam_user_keys_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_ci_iam_user_keys }}" | base64 --decode))
+      echo "::add-mask::$testing_ci_iam_user_keys_decrypt"
+      echo "TESTING_CI_IAM_USER_KEYS=$testing_ci_iam_user_keys_decrypt" >> $GITHUB_ENV
+      fi
