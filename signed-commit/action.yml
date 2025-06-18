@@ -94,6 +94,7 @@ runs:
           git remote set-url origin https://github.com/${{ inputs.remote_repository }}.git
         fi
         git push -u origin $branch_name
+        rm -f ~/.git-credentials
         echo "branch_name=$branch_name" >> $GITHUB_ENV
       shell: bash
 
