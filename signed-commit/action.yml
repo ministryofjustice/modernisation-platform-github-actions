@@ -89,11 +89,14 @@ runs:
         branch_name="signed_commit_$date"
         git checkout -b $branch_name
         if [ ! -z "${{ inputs.remote_repository }}" ]; then
-          git remote set-url origin https://x-access-token:${{ env.GITHUB_TOKEN }}@github.com/${{ inputs.remote_repository }}.git
+          git config --global credential.helper store
+          echo "https://x-access-token:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
+          git remote set-url origin https://github.com/${{ inputs.remote_repository }}.git
         fi
         git push -u origin $branch_name
         echo "branch_name=$branch_name" >> $GITHUB_ENV
       shell: bash
+
 
     - name: Use current branch if on a PR
       if: env.changes == 'true' && github.event_name == 'pull_request'
