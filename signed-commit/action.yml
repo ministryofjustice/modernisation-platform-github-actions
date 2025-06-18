@@ -97,7 +97,6 @@ runs:
         echo "branch_name=$branch_name" >> $GITHUB_ENV
       shell: bash
 
-
     - name: Use current branch if on a PR
       if: env.changes == 'true' && github.event_name == 'pull_request'
       run: |
