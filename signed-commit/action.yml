@@ -89,12 +89,11 @@ runs:
         branch_name="signed_commit_$date"
         git checkout -b $branch_name
         if [ ! -z "${{ inputs.remote_repository }}" ]; then
-          git config --global credential.helper store
-          echo "https://x-access-token:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
           git remote set-url origin https://github.com/${{ inputs.remote_repository }}.git
+          git push -u https://x-access-token:${GITHUB_TOKEN}@github.com/${{ inputs.remote_repository }}.git $branch_name
+        else
+          git push -u origin $branch_name
         fi
-        git push -u origin $branch_name
-        rm -f ~/.git-credentials
         echo "branch_name=$branch_name" >> $GITHUB_ENV
       shell: bash
 
