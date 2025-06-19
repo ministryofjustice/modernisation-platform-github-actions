@@ -90,7 +90,9 @@ runs:
         git checkout -b $branch_name
         if [ ! -z "${{ inputs.remote_repository }}" ]; then
           git remote set-url origin https://github.com/${{ inputs.remote_repository }}.git
-          git push -u https://x-access-token:${GITHUB_TOKEN}@github.com/${{ inputs.remote_repository }}.git $branch_name
+          encoded_token=$(python3 -c "import urllib.parse, os; print(urllib.parse.quote(os.environ['GITHUB_TOKEN']))")
+          echo "::add-mask::$encoded_token"
+          git push -u https://x-access-token:${encoded_token}@github.com/${{ inputs.remote_repository }}.git $branch_name
         else
           git push -u origin $branch_name
         fi
