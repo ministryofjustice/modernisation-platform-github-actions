@@ -23,6 +23,9 @@ inputs:
   remote_repository_path:
     description: "Path to the remote repository's local git directory"
     required: false
+  terraform_github_token:
+    description: "GitHub token for accessing the remote repository"
+    required: false
 
 runs:
   using: "composite"
@@ -89,13 +92,9 @@ runs:
         branch_name="signed_commit_$date"
         git checkout -b $branch_name
         if [ ! -z "${{ inputs.remote_repository }}" ]; then
-          git remote set-url origin https://github.com/${{ inputs.remote_repository }}.git
-          encoded_token=$(python3 -c "import urllib.parse, os; print(urllib.parse.quote(os.environ['GITHUB_TOKEN']))")
-          echo "::add-mask::$encoded_token"
-          git push -u https://x-access-token:${encoded_token}@github.com/${{ inputs.remote_repository }}.git $branch_name
-        else
-          git push -u origin $branch_name
+          git remote set-url origin https://x-access-token:${{ env.GITHUB_TOKEN }}@github.com/${{ inputs.remote_repository }}.git
         fi
+        git push -u origin $branch_name
         echo "branch_name=$branch_name" >> $GITHUB_ENV
       shell: bash
 
