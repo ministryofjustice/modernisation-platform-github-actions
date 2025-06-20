@@ -34,6 +34,15 @@ inputs:
   testing_ci_iam_user_keys:
     description: "Encrypted Testing CI IAM User Keys"
     required: false
+  nuke_account_ids:
+    description: "Encrypted Nuke Account IDs"
+    required: false
+  nuke_rebuild_account_ids:
+    description: "Encrypted Nuke Rebuild Account IDs"
+    required: false
+  nuke_account_blocklist:
+    description: "Encrypted Nuke Account Blocklist"
+    required: false
   PASSPHRASE:
     description: "Passphrase used for GPG decryption"
     required: true
@@ -109,4 +118,22 @@ runs:
       testing_ci_iam_user_keys_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_ci_iam_user_keys }}" | base64 --decode))
       echo "::add-mask::$testing_ci_iam_user_keys_decrypt"
       echo "TESTING_CI_IAM_USER_KEYS=$testing_ci_iam_user_keys_decrypt" >> $GITHUB_ENV
+      fi
+
+      if [ -n "${{ inputs.nuke_account_ids }}" ]; then
+      nuke_account_ids_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.nuke_account_ids }}" | base64 --decode))
+      echo "::add-mask::$nuke_account_ids_decrypt"
+      echo "NUKE_ACCOUNT_IDS=$nuke_account_ids_decrypt" >> $GITHUB_ENV
+      fi
+
+      if [ -n "${{ inputs.nuke_rebuild_account_ids }}" ]; then
+      nuke_rebuild_account_ids_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.nuke_rebuild_account_ids }}" | base64 --decode))
+      echo "::add-mask::$   nuke_rebuild_account_ids_decrypt"
+      echo "NUKE_REBUILD_ACCOUNT_IDS=$nuke_rebuild_account_ids_decrypt" >> $GITHUB_ENV
+      fi  
+
+      if [ -n "${{ inputs.nuke_account_blocklist }}" ]; then
+      nuke_account_blocklist_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.nuke_account_blocklist }}" | base64 --decode))
+      echo "::add-mask::$nuke_account_blocklist_decrypt"
+      echo "NUKE_ACCOUNT_BLOCKLIST=$nuke_account_blocklist_decrypt" >> $GITHUB_ENV
       fi
