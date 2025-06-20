@@ -23,14 +23,11 @@ inputs:
   remote_repository_path:
     description: "Path to the remote repository's local git directory"
     required: false
-  terraform_github_token:
-    description: "GitHub token for accessing the remote repository"
-    required: false
 
 runs:
   using: "composite"
   steps:
-    - name: Set github token for the target repository
+    - name: Set GITHUB_TOKEN environment
       run: echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
       shell: bash
 
@@ -38,13 +35,10 @@ runs:
       run: |
         # Show the status and diff before attempting to add files
         echo "===== Check for changes ====="
-        if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
-          git_path="${{ inputs.git_path }}"
-        else
-          git_path="${{ inputs.git_path }}"
         fi
-
+        git_path="${{ inputs.git_path }}"
         git status
         git diff
         git add "$git_path"
@@ -65,13 +59,13 @@ runs:
       if: env.changes == 'true'
       run: |
         echo "===== Get latest commit ====="
-        if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
         fi
         base_branch=$(git rev-parse --abbrev-ref HEAD)
 
         # Check if remote branch exists
-        if ! git rev-parse origin/$base_branch; then
+        if ! git rev-parse origin/$base_branch >/dev/null 2>&1; then
           echo "No remote branch detected. Using local branch."
           commit_oid=$(git rev-parse $base_branch)
         else
@@ -85,14 +79,14 @@ runs:
       if: env.changes == 'true' && github.event_name != 'pull_request'
       run: |
         echo "===== Generate new branch ====="
-        if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
         fi
         date=$(date +%Y_%m_%d_%H_%M)
         branch_name="signed_commit_$date"
         git checkout -b $branch_name
-        if [ ! -z "${{ inputs.remote_repository }}" ]; then
-          git remote set-url origin https://x-access-token:${{ env.GITHUB_TOKEN }}@github.com/${{ inputs.remote_repository }}.git
+        if [ -n "${{ inputs.remote_repository }}" ]; then
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ inputs.remote_repository }}.git"
         fi
         git push -u origin $branch_name
         echo "branch_name=$branch_name" >> $GITHUB_ENV
@@ -101,7 +95,6 @@ runs:
     - name: Use current branch if on a PR
       if: env.changes == 'true' && github.event_name == 'pull_request'
       run: |
-        echo "===== Using current branch ====="
         current_branch=$(git rev-parse --abbrev-ref HEAD)
         echo "branch_name=$current_branch" >> $GITHUB_ENV
       shell: bash
@@ -110,7 +103,7 @@ runs:
       if: env.changes == 'true'
       run: |
         echo "===== Prepare the changes for GraphQL ====="
-        if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
         fi
         # Initialize an empty JSON object for the additions
@@ -141,7 +134,7 @@ runs:
         GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
       run: |
         echo "===== Create signed commit using GraphQL ====="
-        if [ ! -z "${{ inputs.remote_repository_path }}" ]; then
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
           github_repo="${{ inputs.remote_repository }}"
         else
@@ -173,7 +166,7 @@ runs:
             }
           }' > mutation_payload.json
 
-        RESPONSE=$(curl -X POST -H "Authorization: bearer $GITHUB_TOKEN" \
+        RESPONSE=$(curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" \
           -H "Content-Type: application/json" \
           --data @mutation_payload.json https://api.github.com/graphql)
 
@@ -201,7 +194,7 @@ runs:
       run: |
         echo "===== Create a PR if not running on a PR ====="
         repo_option=""
-        if [ ! -z "${{ inputs.remote_repository }}" ]; then
+        if [ -n "${{ inputs.remote_repository }}" ]; then
           repo_option="--repo github.com/${{ inputs.remote_repository }}"
         fi
 
@@ -210,7 +203,7 @@ runs:
 
         gh pr create $repo_option \
           --base main \
-          --head ${{ env.branch_name }} \
+          --head "${branch_name}" \
           --title "$pr_title" \
           --body "$pr_body"
       shell: bash
