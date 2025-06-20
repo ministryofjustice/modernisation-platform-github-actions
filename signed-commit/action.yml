@@ -28,8 +28,10 @@ runs:
   using: "composite"
   steps:
     - name: Set GITHUB_TOKEN environment
-      run: echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
+      run: echo "GITHUB_TOKEN=$GITHUB_TOKEN" >> $GITHUB_ENV
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
 
     - name: Check for changes
       run: |
@@ -91,6 +93,8 @@ runs:
         git push -u origin $branch_name
         echo "branch_name=$branch_name" >> $GITHUB_ENV
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
 
     - name: Use current branch if on a PR
       if: env.changes == 'true' && github.event_name == 'pull_request'
@@ -131,7 +135,7 @@ runs:
     - name: Create signed commit using GraphQL
       if: env.changes == 'true'
       env:
-        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
         echo "===== Create signed commit using GraphQL ====="
         if [ -n "${{ inputs.remote_repository_path }}" ]; then
@@ -190,7 +194,7 @@ runs:
     - name: Create a PR if not running on a PR
       if: env.changes == 'true' && github.event_name != 'pull_request'
       env:
-        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
         echo "===== Create a PR if not running on a PR ====="
         repo_option=""
