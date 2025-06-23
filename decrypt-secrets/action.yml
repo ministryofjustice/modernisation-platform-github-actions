@@ -128,7 +128,7 @@ runs:
 
         if [ -n "${{ inputs.nuke_rebuild_account_ids }}" ]; then
         nuke_rebuild_account_ids_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.nuke_rebuild_account_ids }}" | base64 --decode))
-        echo "::add-mask::$   nuke_rebuild_account_ids_decrypt"
+        echo "::add-mask::$nuke_rebuild_account_ids_decrypt"
         echo "NUKE_REBUILD_ACCOUNT_IDS=$nuke_rebuild_account_ids_decrypt" >> $GITHUB_ENV
         fi  
 
