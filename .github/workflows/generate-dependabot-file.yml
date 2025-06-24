@@ -20,7 +20,7 @@ permissions: {}
 jobs:
 
   fetch-secrets:
-    uses: ministryofjustice/modernisation-platform-github-actions/.github/workflows/aws-secrets-management.yml@c1e0b8a7db1410268afe2f3377b5d82b09a1b336 # v3.2.4
+    uses: ministryofjustice/modernisation-platform-github-actions/.github/workflows/aws-secrets-management.yml@3f9fb1af00462c69c806640652ddf41292963615 # v3.2.5
     secrets:
       MODERNISATION_PLATFORM_ACCOUNT_NUMBER: ${{ secrets.MODERNISATION_PLATFORM_ACCOUNT_NUMBER }}
       PASSPHRASE: ${{ secrets.PASSPHRASE }}
@@ -43,7 +43,7 @@ jobs:
         run: bash ./scripts/git-setup.sh
 
       - name: Commit and Create PR with Signed Commit
-        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@c1e0b8a7db1410268afe2f3377b5d82b09a1b336 # v3.2.4
+        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@3f9fb1af00462c69c806640652ddf41292963615 # v3.2.5
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_title: "Automated Update: Dependabot File"
