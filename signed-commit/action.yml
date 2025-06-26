@@ -16,7 +16,9 @@ inputs:
   github_token:
     description: "GitHub token with permissions to commit and create PRs"
     required: true
-  # The following parameters support the signed commit changes to be pushed to a separate repository
+  terraform_github_token:
+    description: "GitHub token used for operations against the remote repository"
+    required: false
   remote_repository:
     description: "The remote repository organisation & name if the changes are to be pushed to a remote repository"
     required: false
@@ -27,12 +29,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Set GITHUB_TOKEN environment
-      run: echo "GITHUB_TOKEN=$GITHUB_TOKEN" >> $GITHUB_ENV
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
-
     - name: Check for changes
       run: |
         # Show the status and diff before attempting to add files
@@ -79,22 +75,25 @@ runs:
 
     - name: Generate new branch
       if: env.changes == 'true' && github.event_name != 'pull_request'
+      env:
+        GITHUB_TOKEN: ${{ inputs.terraform_github_token || env.TERRAFORM_GITHUB_TOKEN || inputs.github_token }}
       run: |
         echo "===== Generate new branch ====="
         if [ -n "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
         fi
+
         date=$(date +%Y_%m_%d_%H_%M)
         branch_name="signed_commit_$date"
         git checkout -b $branch_name
+
         if [ -n "${{ inputs.remote_repository }}" ]; then
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ inputs.remote_repository }}.git"
+          git remote set-url origin "https://x-access-token:$GITHUB_TOKEN@github.com/${{ inputs.remote_repository }}.git"
         fi
+
         git push -u origin $branch_name
         echo "branch_name=$branch_name" >> $GITHUB_ENV
       shell: bash
-      env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
 
     - name: Use current branch if on a PR
       if: env.changes == 'true' && github.event_name == 'pull_request'
@@ -116,9 +115,6 @@ runs:
         # Read the changed files from changed_files.txt
         while IFS= read -r file; do
           if [[ -f "$file" ]]; then
-            # Add a newline to the end of the content
-            file_content="$(cat "$file")"
-
             # Base64 encode the contents of the file
             base64_content=$(base64 < "$file" | tr -d '\n')
 
@@ -134,8 +130,6 @@ runs:
 
     - name: Create signed commit using GraphQL
       if: env.changes == 'true'
-      env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
         echo "===== Create signed commit using GraphQL ====="
         if [ -n "${{ inputs.remote_repository_path }}" ]; then
@@ -143,6 +137,12 @@ runs:
           github_repo="${{ inputs.remote_repository }}"
         else
           github_repo="${{ github.repository }}"
+        fi
+
+        # Fallback for GITHUB_TOKEN if not set
+        GITHUB_TOKEN="${{ inputs.github_token }}"
+        if [ -z "$GITHUB_TOKEN" ]; then
+          GITHUB_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
         fi
 
         commit_message="Automated signed commit update"
@@ -193,10 +193,22 @@ runs:
 
     - name: Create a PR if not running on a PR
       if: env.changes == 'true' && github.event_name != 'pull_request'
-      env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
         echo "===== Create a PR if not running on a PR ====="
+
+        # Fallback for GH_TOKEN
+        GH_TOKEN="${{ inputs.github_token }}"
+        if [ -z "$GH_TOKEN" ]; then
+          GH_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GH_TOKEN}}"
+        fi
+
+        if [ -z "$GH_TOKEN" ]; then
+          echo "GH_TOKEN is not set. Exiting..."
+          exit 1
+        fi
+
+        export GH_TOKEN
+
         repo_option=""
         if [ -n "${{ inputs.remote_repository }}" ]; then
           repo_option="--repo github.com/${{ inputs.remote_repository }}"
