@@ -1,23 +1,11 @@
 name: Code Formatter
-description: "Runs MegaLinter with signed commit + optional PR"
+description: "Runs MegaLinter to format code and apply linting rules across the repository."
 author: "Aaron Robinson"
 
 on:
   workflow_call:
     inputs:
-      pr_title:
-        required: false
-        default: "GitHub Actions Code Formatter workflow"
-        type: string
-      pr_body:
-        required: false
-        default: |
-          This pull request includes updates from the GitHub Actions Code Formatter workflow.
-          Please review the changes and merge if everything looks good.
-        type: string
-
-      # MegaLinter config options
-      flavor:
+      flavor: 
         required: false
         default: "full"
         type: string
@@ -66,10 +54,6 @@ on:
         default: ""
         type: string
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
   format-code:
     name: MegaLinter
@@ -77,13 +61,10 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 #v4.1.1
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Prepare Git options
-        run: bash ./scripts/git-setup.sh
 
       - name: Run MegaLinter
         uses: oxsecurity/megalinter/flavors/${{ inputs.flavor }}@e08c2b05e3dbc40af4c23f41172ef1e068a7d651 # v8.8.0
@@ -100,10 +81,3 @@ jobs:
           MARKDOWN_MARKDOWNLINT_FILTER_REGEX_EXCLUDE: ${{ inputs.markdown_markdownlint_filter_regex_exclude }}
           REPORT_OUTPUT_FOLDER: ${{ inputs.report_output_folder }}
           FILES_TO_EXCLUDE: ${{ inputs.ignore_files }}
-
-      - name: Commit and Create PR with Signed Commit if Changes are Found
-        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@0442287e70970e2e732fbfecf17fd362d2d21dee # v3.2.6
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          pr_title: ${{ inputs.pr_title }}
-          pr_body: ${{ inputs.pr_body }}

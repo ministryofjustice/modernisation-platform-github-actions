@@ -1,8 +1,8 @@
-# 🔧 GitHub Actions Code Formatter (Reusable Workflow)
+# 🔧 Code Formatter (Reusable Workflow)
 
-This is a reusable GitHub Actions workflow that runs [MegaLinter](https://megalinter.io/) to automatically lint and format your codebase. It helps enforce consistent standards and can auto-correct issues by raising pull requests.
+This is a reusable GitHub Actions workflow that runs [MegaLinter](https://megalinter.io/) to automatically lint and format your codebase. It helps enforce consistent standards and can auto-correct issues.
 
-It runs on a schedule or via manual trigger, and will open a pull request with any fixes it applies.
+This workflow runs MegaLinter only. To create pull requests with signed commits containing any fixes, you can chain this workflow with a separate [signed-commit reusable workflow](https://github.com/ministryofjustice/modernisation-platform-github-actions/signed-commit).
 
 ---
 
@@ -11,17 +11,16 @@ It runs on a schedule or via manual trigger, and will open a pull request with a
 - Powered by [MegaLinter](https://megalinter.io/), the all-in-one code linter and formatter
 - **Supports all major languages and formats**, including Terraform, Python, Markdown, JSON, YAML, etc.
 - Uses [MegaLinter flavors](https://megalinter.io/flavors/) to optimise speed and relevance
-- Automatically creates a pull request with signed commits if changes are needed
 - Fully configurable by consumers via inputs
 
 ---
 
 ## 🚀 Quick Start
 
-In your repository, create a workflow like `.github/workflows/format-code.yml`:
+Create a workflow file in your repository, for example `.github/workflows/format-code.yml`:
 
 ```yaml
-name: Format Code
+name: "Format Code: ensure code formatting guidelines are met"
 
 on:
   workflow_dispatch:
@@ -30,31 +29,28 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   format:
-    uses: ministryofjustice/modernisation-platform-github-actions/format-code@0442287e70970e2e732fbfecf17fd362d2d21dee # 3.2.6
+    uses: ministryofjustice/modernisation-platform-github-actions/format-code@v3.2.6
     with:
       flavor: terraform
-      pr_title: "Code Formatter PR"
-      pr_body: "Automated PR created by the reusable Code Formatter workflow."
 ```
 
-Replace `flavor: terraform` with another flavor if needed (see below).
+> **Note:** This workflow only runs MegaLinter. To automatically create pull requests with fixes and signed commits, chain this with the [signed-commit reusable workflow](https://github.com/ministryofjustice/modernisation-platform-github-actions).
 
 ---
 
 ## 🧬 MegaLinter Flavors
 
-This workflow supports [MegaLinter Flavors](https://megalinter.io/flavors/) to optimize performance based on your codebase.
+This workflow supports [MegaLinter Flavors](https://megalinter.io/flavors/) to optimise performance and relevance based on your codebase:
 
-| Flavor      | Description                        |
-| ----------- | ---------------------------------- |
-| `full`      | ✅ Default — all supported linters |
-| `terraform` | Optimised for Terraform codebases  |
-| `python`    | Optimised for Python projects      |
-| `light`     | Minimal linters, fastest linting   |
+| Flavor      | Description                             |
+| ----------- | --------------------------------------- |
+| `full`      | ✅ Default — runs all supported linters |
+| `terraform` | Optimised for Terraform codebases       |
+| `python`    | Optimised for Python projects           |
+| `light`     | Minimal linters, fastest linting        |
 
 You can override the default flavor like so:
 
@@ -67,44 +63,29 @@ with:
 
 ## 🧾 Inputs
 
-These inputs let you fine-tune behaviour. All are optional and have sensible defaults.
+These inputs let you fine-tune behaviour. All are optional with sensible defaults:
 
-| Name                                         | Default Value                                                                             | Description                                                                          |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `flavor`                                     | `full`                                                                                    | MegaLinter flavor to use (e.g., `terraform`, `python`, `full`)                       |
-| `pr_title`                                   | `"GitHub Actions Code Formatter workflow"`                                                | Title of the auto-created pull request                                               |
-| `pr_body`                                    | `"This pull request includes updates from the GitHub Actions Code Formatter workflow..."` | Body of the PR                                                                       |
-| `apply_fixes`                                | `all`                                                                                     | What to fix (e.g. `none`, `all`)                                                     |
-| `apply_fixes_event`                          | `all`                                                                                     | Trigger type to apply fixes (`push`, `pull_request`, `all`)                          |
-| `apply_fixes_mode`                           | `pull_request`                                                                            | Apply fixes as `commit` or via `pull_request`                                        |
-| `disable_errors`                             | `true`                                                                                    | If `true`, warnings do not fail the job                                              |
-| `email_reporter`                             | `false`                                                                                   | If `true`, sends email reports                                                       |
-| `enable_linters`                             | `JSON_PRETTIER,YAML_PRETTIER,TERRAFORM_TERRAFORM_FMT,MARKDOWN_MARKDOWNLINT`               | Comma-separated list of linters to enable                                            |
-| `validate_all_codebase`                      | `true`                                                                                    | If `true`, lints the entire codebase                                                 |
-| `yaml_prettier_filter_regex_exclude`         | `(.github/*)`                                                                             | Regex for YAML files to exclude                                                      |
-| `markdown_markdownlint_filter_regex_exclude` | `(terraform/modules/.*/.*.md)`                                                            | Regex for Markdown files to exclude                                                  |
-| `report_output_folder`                       | `""`                                                                                      | Optional output folder for MegaLinter reports. Leave empty to disable report output. |
-
----
-
-## 📁 Required File: `scripts/git-setup.sh`
-
-Your repo must include a `scripts/git-setup.sh` script to configure git (e.g., set user/email, etc.). Example content:
-
-```bash
-#!/bin/bash
-git config --global user.email "github-actions@github.com"
-git config --global user.name "github-actions"
-```
-
-This script ensures the PR commit is signed correctly.
+| Name                                         | Default Value                                                               | Description                                                                          |
+| -------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `flavor`                                     | `full`                                                                      | MegaLinter flavor to use (e.g., `terraform`, `python`, `full`)                       |
+| `apply_fixes`                                | `all`                                                                       | What to fix (e.g., `none`, `all`)                                                    |
+| `apply_fixes_event`                          | `all`                                                                       | Trigger type to apply fixes (`push`, `pull_request`, `all`)                          |
+| `apply_fixes_mode`                           | `pull_request`                                                              | Apply fixes as `commit` or via `pull_request`                                        |
+| `disable_errors`                             | `true`                                                                      | If `true`, warnings do not fail the job                                              |
+| `email_reporter`                             | `false`                                                                     | If `true`, sends email reports                                                       |
+| `enable_linters`                             | `JSON_PRETTIER,YAML_PRETTIER,TERRAFORM_TERRAFORM_FMT,MARKDOWN_MARKDOWNLINT` | Comma-separated list of linters to enable                                            |
+| `validate_all_codebase`                      | `true`                                                                      | If `true`, lints the entire codebase                                                 |
+| `yaml_prettier_filter_regex_exclude`         | `(.github/*)`                                                               | Regex for YAML files to exclude                                                      |
+| `markdown_markdownlint_filter_regex_exclude` | `(terraform/modules/.*/.*.md)`                                              | Regex for Markdown files to exclude                                                  |
+| `report_output_folder`                       | `""`                                                                        | Optional output folder for MegaLinter reports. Leave empty to disable report output. |
+| `ignore_files`                               | `""`                                                                        | Optional regex or glob patterns of files to exclude                                  |
 
 ---
 
 ## 🔐 Security Notes
 
 - All action references are **pinned to specific versions** for stability and security.
-- Pull requests are created using a reusable [signed commit workflow](https://github.com/ministryofjustice/modernisation-platform-github-actions) to ensure traceability.
+- Pull requests with signed commits are created using a separate reusable [signed commit workflow](https://github.com/ministryofjustice/modernisation-platform-github-actions).
 - Uses the GitHub-provided `GITHUB_TOKEN` with limited scoped permissions.
 
 ---
@@ -114,7 +95,7 @@ This script ensures the PR commit is signed correctly.
 ```yaml
 jobs:
   format:
-    uses: ministryofjustice/modernisation-platform-github-actions/format-code@0442287e70970e2e732fbfecf17fd362d2d21dee # 3.2.6
+    uses: ministryofjustice/modernisation-platform-github-actions/format-code@v3.2.6
     with:
       flavor: python
       enable_linters: "PYTHON_PYLINT,MARKDOWN_MARKDOWNLINT"
@@ -134,6 +115,3 @@ If you want to add new defaults, linter configurations, or improvements — open
 
 - [MegaLinter Docs](https://megalinter.io/)
 - [Flavors Guide](https://megalinter.io/flavors/)
-- [Signed Commit Action](https://github.com/ministryofjustice/modernisation-platform-github-actions)
-
----
