@@ -1,0 +1,109 @@
+name: Code Formatter
+description: "Runs MegaLinter with signed commit + optional PR"
+author: "Aaron Robinson"
+
+on:
+  workflow_call:
+    inputs:
+      pr_title:
+        required: false
+        default: "GitHub Actions Code Formatter workflow"
+        type: string
+      pr_body:
+        required: false
+        default: |
+          This pull request includes updates from the GitHub Actions Code Formatter workflow.
+          Please review the changes and merge if everything looks good.
+        type: string
+
+      # MegaLinter config options
+      flavor:
+        required: false
+        default: "full"
+        type: string
+      apply_fixes:
+        required: false
+        default: "all"
+        type: string
+      apply_fixes_event:
+        required: false
+        default: "all"
+        type: string
+      apply_fixes_mode:
+        required: false
+        default: "pull_request"
+        type: string
+      disable_errors:
+        required: false
+        default: "true"
+        type: string
+      email_reporter:
+        required: false
+        default: "false"
+        type: string
+      enable_linters:
+        required: false
+        default: "JSON_PRETTIER,YAML_PRETTIER,TERRAFORM_TERRAFORM_FMT,MARKDOWN_MARKDOWNLINT"
+        type: string
+      validate_all_codebase:
+        required: false
+        default: "true"
+        type: string
+      yaml_prettier_filter_regex_exclude:
+        required: false
+        default: "(.github/*)"
+        type: string
+      markdown_markdownlint_filter_regex_exclude:
+        required: false
+        default: ""
+        type: string
+      report_output_folder:
+        required: false
+        default: ""
+        type: string
+      ignore_files:
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  format-code:
+    name: MegaLinter
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 #v4.1.1
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare Git options
+        run: bash ./scripts/git-setup.sh
+
+      - name: Run MegaLinter
+        uses: oxsecurity/megalinter/flavors/${{ inputs.flavor }}@e08c2b05e3dbc40af4c23f41172ef1e068a7d651 # v8.8.0
+        env:
+          APPLY_FIXES: ${{ inputs.apply_fixes }}
+          APPLY_FIXES_EVENT: ${{ inputs.apply_fixes_event }}
+          APPLY_FIXES_MODE: ${{ inputs.apply_fixes_mode }}
+          DISABLE_ERRORS: ${{ inputs.disable_errors }}
+          EMAIL_REPORTER: ${{ inputs.email_reporter }}
+          ENABLE_LINTERS: ${{ inputs.enable_linters }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase }}
+          YAML_PRETTIER_FILTER_REGEX_EXCLUDE: ${{ inputs.yaml_prettier_filter_regex_exclude }}
+          MARKDOWN_MARKDOWNLINT_FILTER_REGEX_EXCLUDE: ${{ inputs.markdown_markdownlint_filter_regex_exclude }}
+          REPORT_OUTPUT_FOLDER: ${{ inputs.report_output_folder }}
+          FILES_TO_EXCLUDE: ${{ inputs.ignore_files }}
+
+      - name: Commit and Create PR with Signed Commit if Changes are Found
+        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@0442287e70970e2e732fbfecf17fd362d2d21dee # v3.2.6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          pr_title: ${{ inputs.pr_title }}
+          pr_body: ${{ inputs.pr_body }}
