@@ -5,7 +5,7 @@ author: "Aaron Robinson"
 on:
   workflow_call:
     inputs:
-      flavor: 
+      flavor:
         required: false
         default: "full"
         type: string
