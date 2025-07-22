@@ -10,14 +10,14 @@ permissions:
 
 jobs:
   format-code:
-    uses: ministryofjustice/modernisation-platform-github-actions/.github/workflows/reusable-format-code.yml@3a73483ccd4c22747f466fbc5d33e681540fbba9
+    uses: ministryofjustice/modernisation-platform-github-actions/format-code@main # main
     with:
       ignore_files: "README.md"
 
   sign-commit:
     name: Commit and Create/Update PR with Signed Commit if Changes are Found
     needs: format-code
-    uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@3a73483ccd4c22747f466fbc5d33e681540fbba9
+    uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@main
     with:
       github_token: ${{ secrets.GITHUB_TOKEN }}
       pr_title: "GitHub Actions Code Formatter workflow"
