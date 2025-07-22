@@ -62,7 +62,6 @@ inputs:
     required: false
     default: "(.github/*)"
 
-
 runs:
   using: "composite"
   steps:
