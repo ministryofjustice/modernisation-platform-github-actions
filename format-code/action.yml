@@ -91,8 +91,17 @@ runs:
           megalinter-reports
           mega-linter.log
 
+    - name: Check for SARIF file
+      id: check_sarif
+      run: |
+        if [ -f "megalinter-reports/megalinter-report.sarif" ]; then
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Upload SARIF to GitHub Security tab
-      if: success() || failure()
+      if: steps.check_sarif.outputs.exists == 'true'
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: megalinter-reports/megalinter-report.sarif
