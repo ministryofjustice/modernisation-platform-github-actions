@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   format-code:
-    uses: ministryofjustice/modernisation-platform-github-actions/format-code@3a73483ccd4c22747f466fbc5d33e681540fbba9
+    uses: ministryofjustice/modernisation-platform-github-actions/.github/workflows/reusable-format-code@3a73483ccd4c22747f466fbc5d33e681540fbba9
     with:
       ignore_files: "README.md"
 
