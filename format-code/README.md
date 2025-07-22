@@ -12,6 +12,7 @@ This workflow runs MegaLinter only. To create pull requests with signed commits 
 - **Supports all major languages and formats**, including Terraform, Python, Markdown, JSON, YAML, etc.
 - Uses [MegaLinter flavors](https://megalinter.io/flavors/) to optimise speed and relevance
 - Fully configurable by consumers via inputs
+- Uploads SARIF reports to GitHub Security tab for actionable insights
 
 ---
 
@@ -29,10 +30,11 @@ on:
 
 permissions:
   contents: write
+  security-events: write
 
 jobs:
   format:
-    uses: ministryofjustice/modernisation-platform-github-actions/format-code@v3.2.6
+    uses: ministryofjustice/modernisation-platform-github-actions/format-code@0442287e70970e2e732fbfecf17fd362d2d21dee
     with:
       flavor: terraform
 ```
@@ -52,7 +54,7 @@ This workflow supports [MegaLinter Flavors](https://megalinter.io/flavors/) to o
 | `python`    | Optimised for Python projects           |
 | `light`     | Minimal linters, fastest linting        |
 
-You can override the default flavor like so:
+Override the flavor by setting the `flavor` input:
 
 ```yaml
 with:
@@ -65,28 +67,32 @@ with:
 
 These inputs let you fine-tune behaviour. All are optional with sensible defaults:
 
-| Name                                         | Default Value                                                               | Description                                                                          |
-| -------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `flavor`                                     | `full`                                                                      | MegaLinter flavor to use (e.g., `terraform`, `python`, `full`)                       |
-| `apply_fixes`                                | `all`                                                                       | What to fix (e.g., `none`, `all`)                                                    |
-| `apply_fixes_event`                          | `all`                                                                       | Trigger type to apply fixes (`push`, `pull_request`, `all`)                          |
-| `apply_fixes_mode`                           | `pull_request`                                                              | Apply fixes as `commit` or via `pull_request`                                        |
-| `disable_errors`                             | `true`                                                                      | If `true`, warnings do not fail the job                                              |
-| `email_reporter`                             | `false`                                                                     | If `true`, sends email reports                                                       |
-| `enable_linters`                             | `JSON_PRETTIER,YAML_PRETTIER,TERRAFORM_TERRAFORM_FMT,MARKDOWN_MARKDOWNLINT` | Comma-separated list of linters to enable                                            |
-| `validate_all_codebase`                      | `true`                                                                      | If `true`, lints the entire codebase                                                 |
-| `yaml_prettier_filter_regex_exclude`         | `(.github/*)`                                                               | Regex for YAML files to exclude                                                      |
-| `markdown_markdownlint_filter_regex_exclude` | `(terraform/modules/.*/.*.md)`                                              | Regex for Markdown files to exclude                                                  |
-| `report_output_folder`                       | `""`                                                                        | Optional output folder for MegaLinter reports. Leave empty to disable report output. |
-| `ignore_files`                               | `""`                                                                        | Optional regex or glob patterns of files to exclude                                  |
+| Name                                         | Default Value                                                               | Description                                                                                                   |
+| -------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `flavor`                                     | `full`                                                                      | MegaLinter flavor to use                                                                                      |
+| `apply_fixes`                                | `all`                                                                       | What to fix (e.g., `none`, `all`)                                                                             |
+| `apply_fixes_event`                          | `all`                                                                       | When to apply fixes (`push`, `pull_request`, `all`)                                                           |
+| `apply_fixes_mode`                           | `pull_request`                                                              | How to apply fixes (`commit` or `pull_request`)                                                               |
+| `disable_errors`                             | `true`                                                                      | If `true`, warnings do not fail the job                                                                       |
+| `email_reporter`                             | `false`                                                                     | If `true`, sends email reports                                                                                |
+| `enable_linters`                             | `JSON_PRETTIER,YAML_PRETTIER,TERRAFORM_TERRAFORM_FMT,MARKDOWN_MARKDOWNLINT` | Comma-separated list of linters to enable                                                                     |
+| `ignore_files`                               | `""`                                                                        | Regex or glob pattern of files to exclude                                                                     |
+| `markdown_markdownlint_filter_regex_exclude` | `""`                                                                        | Regex pattern to exclude specific Markdown files                                                              |
+| `report_output_folder`                       | `""`                                                                        | Optional output folder for MegaLinter reports                                                                 |
+| `validate_all_codebase`                      | `false`                                                                     | If `true`, lints the entire codebase. If left empty, it defaults to `true` on `push` or `schedule` to `main`. |
+| `yaml_prettier_filter_regex_exclude`         | `(.github/*)`                                                               | Regex pattern to exclude YAML files (default excludes GitHub configs)                                         |
+
+> If `validate_all_codebase` is not provided, it defaults to `true` on `push` or `schedule` events to the `main` branch.  
+> However, explicitly setting it to `"false"` disables full-codebase validation regardless of the event.
 
 ---
 
 ## 🔐 Security Notes
 
-- All action references are **pinned to specific versions** for stability and security.
-- Pull requests with signed commits are created using a separate reusable [signed commit workflow](https://github.com/ministryofjustice/modernisation-platform-github-actions).
-- Uses the GitHub-provided `GITHUB_TOKEN` with limited scoped permissions.
+- All actions are **pinned to specific commit SHAs** for security and stability.
+- SARIF output is uploaded to the GitHub Security tab for visibility into linting issues.
+- Pull requests with signed commits should be created using the separate [signed commit workflow](https://github.com/ministryofjustice/modernisation-platform-github-actions).
+- Uses GitHub's built-in `GITHUB_TOKEN` for minimal-scoped auth.
 
 ---
 
@@ -95,7 +101,7 @@ These inputs let you fine-tune behaviour. All are optional with sensible default
 ```yaml
 jobs:
   format:
-    uses: ministryofjustice/modernisation-platform-github-actions/format-code@v3.2.6
+    uses: ministryofjustice/modernisation-platform-github-actions/format-code@0442287e70970e2e732fbfecf17fd362d2d21dee
     with:
       flavor: python
       enable_linters: "PYTHON_PYLINT,MARKDOWN_MARKDOWNLINT"
@@ -107,7 +113,11 @@ jobs:
 
 ## 🤝 Contributing
 
-If you want to add new defaults, linter configurations, or improvements — open a PR in this repo.
+Want to improve this workflow? PRs are welcome for:
+
+- Updated linter configurations
+- Additional options or docs
+- Bug fixes or enhancements
 
 ---
 
@@ -115,3 +125,4 @@ If you want to add new defaults, linter configurations, or improvements — open
 
 - [MegaLinter Docs](https://megalinter.io/)
 - [Flavors Guide](https://megalinter.io/flavors/)
+- [SARIF Format](https://docs.github.com/en/code-security/code-scanning/working-with-code-scanning/sarif-support-for-code-scanning)

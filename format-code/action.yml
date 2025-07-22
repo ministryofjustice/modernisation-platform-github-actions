@@ -1,5 +1,5 @@
 name: Code Formatter
-description: "Runs MegaLinter to format code and apply linting rules across the repository."
+description: "Runs MegaLinter to format code and apply linting rules across the repository, and uploads SARIF reports to GitHub Security tab."
 author: "Aaron Robinson"
 
 on:
@@ -33,13 +33,9 @@ on:
         required: false
         default: "JSON_PRETTIER,YAML_PRETTIER,TERRAFORM_TERRAFORM_FMT,MARKDOWN_MARKDOWNLINT"
         type: string
-      validate_all_codebase:
+      ignore_files:
         required: false
-        default: "true"
-        type: string
-      yaml_prettier_filter_regex_exclude:
-        required: false
-        default: "(.github/*)"
+        default: ""
         type: string
       markdown_markdownlint_filter_regex_exclude:
         required: false
@@ -49,9 +45,13 @@ on:
         required: false
         default: ""
         type: string
-      ignore_files:
+      validate_all_codebase:
         required: false
-        default: ""
+        default: "false"
+        type: string
+      yaml_prettier_filter_regex_exclude:
+        required: false
+        default: "(.github/*)"
         type: string
 
 jobs:
@@ -75,9 +75,25 @@ jobs:
           DISABLE_ERRORS: ${{ inputs.disable_errors }}
           EMAIL_REPORTER: ${{ inputs.email_reporter }}
           ENABLE_LINTERS: ${{ inputs.enable_linters }}
+          FILES_TO_EXCLUDE: ${{ inputs.ignore_files }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase }}
-          YAML_PRETTIER_FILTER_REGEX_EXCLUDE: ${{ inputs.yaml_prettier_filter_regex_exclude }}
           MARKDOWN_MARKDOWNLINT_FILTER_REGEX_EXCLUDE: ${{ inputs.markdown_markdownlint_filter_regex_exclude }}
           REPORT_OUTPUT_FOLDER: ${{ inputs.report_output_folder }}
-          FILES_TO_EXCLUDE: ${{ inputs.ignore_files }}
+          REPORTERS: sarif
+          VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase != '' && inputs.validate_all_codebase || (github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main' && 'true' || 'false' }}
+          YAML_PRETTIER_FILTER_REGEX_EXCLUDE: ${{ inputs.yaml_prettier_filter_regex_exclude }}
+
+      - name: Archive MegaLinter Reports
+        if: success() || failure()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: MegaLinter reports
+          path: |
+            megalinter-reports
+            mega-linter.log
+
+      - name: Upload SARIF to GitHub Security tab
+        if: success() || failure()
+        uses: github/codeql-action/upload-sarif@cf7e9f23492505046de9a37830c3711dd0f25bb3 # v2.16.2
+        with:
+          sarif_file: megalinter-reports/megalinter-report.sarif
