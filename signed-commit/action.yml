@@ -98,7 +98,7 @@ runs:
     - name: Use current branch if on a PR
       if: env.changes == 'true' && github.event_name == 'pull_request'
       run: |
-        current_branch=$(git rev-parse --abbrev-ref HEAD)
+        current_branch="${GITHUB_HEAD_REF:-$(git rev-parse --abbrev-ref HEAD)}"
         echo "branch_name=$current_branch" >> $GITHUB_ENV
       shell: bash
 
