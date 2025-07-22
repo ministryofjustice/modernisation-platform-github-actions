@@ -45,7 +45,7 @@ inputs:
   report_output_folder:
     description: "Optional folder to output MegaLinter reports to"
     required: false
-    default: ""
+    default: "megalinter-reports"
 
   validate_all_codebase:
     description: "Whether to lint the whole codebase or just changed files"
