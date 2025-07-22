@@ -2,11 +2,6 @@ name: "Code Formatter"
 description: "Runs MegaLinter to format code and upload SARIF reports"
 author: "Aaron Robinson"
 inputs:
-  flavor:
-    description: "MegaLinter flavor to use (default: full)"
-    required: false
-    default: "full"
-
   apply_fixes:
     description: "Whether to apply automatic fixes (default: all)"
     required: false
@@ -71,7 +66,7 @@ runs:
         fetch-depth: 0
 
     - name: Run MegaLinter
-      uses: oxsecurity/megalinter/flavors/${{ inputs.flavor }}@v8.8.0
+      uses: oxsecurity/megalinter/flavors/terraform@v8.8.0
       env:
         APPLY_FIXES: ${{ inputs.apply_fixes }}
         APPLY_FIXES_EVENT: ${{ inputs.apply_fixes_event }}
