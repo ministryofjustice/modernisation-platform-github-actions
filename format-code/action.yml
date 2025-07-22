@@ -1,0 +1,101 @@
+name: "Code Formatter"
+description: "Runs MegaLinter to format code and upload SARIF reports"
+author: "Aaron Robinson"
+inputs:
+  flavor:
+    description: "MegaLinter flavor to use (default: full)"
+    required: false
+    default: "full"
+
+  apply_fixes:
+    description: "Whether to apply automatic fixes (default: all)"
+    required: false
+    default: "all"
+
+  apply_fixes_event:
+    description: "Events on which to apply fixes (default: all)"
+    required: false
+    default: "all"
+
+  apply_fixes_mode:
+    description: "Mode for applying fixes (e.g., pull_request)"
+    required: false
+    default: "pull_request"
+
+  disable_errors:
+    description: "Disable error outputs from MegaLinter"
+    required: false
+    default: "true"
+
+  email_reporter:
+    description: "Enable or disable email reports"
+    required: false
+    default: "false"
+
+  enable_linters:
+    description: "Comma-separated list of linters to enable"
+    required: false
+    default: "JSON_PRETTIER,YAML_PRETTIER,TERRAFORM_TERRAFORM_FMT,MARKDOWN_MARKDOWNLINT"
+
+  ignore_files:
+    description: "File patterns to exclude from linting"
+    required: false
+    default: ""
+
+  markdown_markdownlint_filter_regex_exclude:
+    description: "Regex for excluding markdown files from markdownlint"
+    required: false
+    default: ""
+
+  report_output_folder:
+    description: "Optional folder to output MegaLinter reports to"
+    required: false
+    default: ""
+
+  validate_all_codebase:
+    description: "Whether to lint the whole codebase or just changed files"
+    required: false
+    default: "false"
+
+  yaml_prettier_filter_regex_exclude:
+    description: "Regex for excluding YAML files from prettier"
+    required: false
+    default: "(.github/*)"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run MegaLinter
+      uses: oxsecurity/megalinter/flavors/${{ inputs.flavor }}@v8.8.0
+      env:
+        APPLY_FIXES: ${{ inputs.apply_fixes }}
+        APPLY_FIXES_EVENT: ${{ inputs.apply_fixes_event }}
+        APPLY_FIXES_MODE: ${{ inputs.apply_fixes_mode }}
+        DISABLE_ERRORS: ${{ inputs.disable_errors }}
+        EMAIL_REPORTER: ${{ inputs.email_reporter }}
+        ENABLE_LINTERS: ${{ inputs.enable_linters }}
+        FILES_TO_EXCLUDE: ${{ inputs.ignore_files }}
+        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+        MARKDOWN_MARKDOWNLINT_FILTER_REGEX_EXCLUDE: ${{ inputs.markdown_markdownlint_filter_regex_exclude }}
+        REPORT_OUTPUT_FOLDER: ${{ inputs.report_output_folder }}
+        REPORTERS: sarif
+        VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase }}
+        YAML_PRETTIER_FILTER_REGEX_EXCLUDE: ${{ inputs.yaml_prettier_filter_regex_exclude }}
+
+    - name: Archive MegaLinter Reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: MegaLinter reports
+        path: |
+          megalinter-reports
+          mega-linter.log
+
+    - name: Upload SARIF to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: megalinter-reports/megalinter-report.sarif
