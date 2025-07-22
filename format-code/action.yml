@@ -83,6 +83,7 @@ runs:
         YAML_PRETTIER_FILTER_REGEX_EXCLUDE: ${{ inputs.yaml_prettier_filter_regex_exclude }}
 
     - name: Archive MegaLinter Reports
+      if: success() || failure()
       uses: actions/upload-artifact@v4
       with:
         name: MegaLinter reports
@@ -91,6 +92,7 @@ runs:
           mega-linter.log
 
     - name: Upload SARIF to GitHub Security tab
+      if: success() || failure()
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: megalinter-reports/megalinter-report.sarif
