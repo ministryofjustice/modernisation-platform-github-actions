@@ -45,7 +45,7 @@ inputs:
   report_output_folder:
     description: "Optional folder to output MegaLinter reports to"
     required: false
-    default: "megalinter-reports"
+    default: ""
 
   validate_all_codebase:
     description: "Whether to lint the whole codebase or just changed files"
@@ -91,6 +91,6 @@ runs:
           mega-linter.log
 
     - name: Upload SARIF to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: megalinter-reports/megalinter-report.sarif
