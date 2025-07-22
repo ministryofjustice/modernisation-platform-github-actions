@@ -21,25 +21,34 @@ This workflow runs MegaLinter only. To create pull requests with signed commits 
 Create a workflow file in your repository, for example `.github/workflows/format-code.yml`:
 
 ```yaml
-name: "Format Code: ensure code formatting guidelines are met"
+name: Format Code
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "45 4 * * 1-5"
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
 
 permissions:
   contents: write
-  security-events: write
+  security-events: write # needed for SARIF upload
 
 jobs:
-  format:
-    uses: ministryofjustice/modernisation-platform-github-actions/format-code@0442287e70970e2e732fbfecf17fd362d2d21dee
+  format-code:
+    uses: ministryofjustice/modernisation-platform-github-actions/.github/workflows/format-code.yml@<ref>
     with:
       flavor: terraform
+      ignore_files: "README.md"
+
+  commit-fixes:
+    uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@<ref>
+    if: ${{ always() }}
+    with:
+      github_token: ${{ secrets.GITHUB_TOKEN }}
+      pr_title: "GitHub Actions Code Formatter workflow"
+      pr_body: "This pull request includes updates from the GitHub Actions Code Formatter workflow. Please review the changes and merge if everything looks good."
 ```
 
-> **Note:** This workflow only runs MegaLinter. To automatically create pull requests with fixes and signed commits, chain this with the [signed-commit reusable workflow](https://github.com/ministryofjustice/modernisation-platform-github-actions).
+> 🔁 Replace <ref> with a specific commit SHA or tag (e.g. v1.0.0) to ensure stability.
+> **Note:** This workflow only runs MegaLinter. To automatically create pull requests with fixes and signed commits, chain this with the [signed-commit reusable workflow](https://github.com/ministryofjustice/modernisation-platform-github-actions) as per above example.
 
 ---
 
