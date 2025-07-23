@@ -1,0 +1,43 @@
+----------------------------------------------------------------------------------------------------
+------------------------------------ MegaLinter, by OX Security ------------------------------------
+----------------------------------------------------------------------------------------------------
+ - Image Creation Date: 2025-06-15T16:22:24Z
+ - Image Revision: e08c2b05e3dbc40af4c23f41172ef1e068a7d651
+ - Image Version: v8.8.0
+----------------------------------------------------------------------------------------------------
+The MegaLinter documentation can be found at:
+ - https://megalinter.io/8.8.0
+----------------------------------------------------------------------------------------------------
+::group::MegaLinter initialization (expand for details)
+MegaLinter will analyze workspace [/github/workspace]
+GITHUB_REPOSITORY: ministryofjustice/modernisation-platform-github-actions
+GITHUB_REF: refs/pull/97/merge
+GITHUB_RUN_ID: 16465063805
+
+
+JSON_ESLINT_PLUGIN_JSONC has been disabled in MegaLinter for the following reason: Bug in eslint-plugin-jsonc: https://github.com/ota-meshi/eslint-plugin-jsonc/issues/328
+MAKEFILE_CHECKMAKE has been disabled in MegaLinter for the following reason: Security issues: https://github.com/mrtazz/checkmake/issues/99
+MARKDOWN_REMARK_LINT has been disabled in MegaLinter for the following reason: Bug in remark-lint: https://github.com/remarkjs/remark-lint/issues/322
+Skipped linters: ACTION_ACTIONLINT, ANSIBLE_ANSIBLE_LINT, API_SPECTRAL, ARM_ARM_TTK, BASH_EXEC, BASH_SHELLCHECK, BASH_SHFMT, BICEP_BICEP_LINTER, CLOJURE_CLJSTYLE, CLOJURE_CLJ_KONDO, CLOUDFORMATION_CFN_LINT, COFFEE_COFFEELINT, COPYPASTE_JSCPD, CPP_CLANG_FORMAT, CPP_CPPCHECK, CPP_CPPLINT, CSHARP_CSHARPIER, CSHARP_DOTNET_FORMAT, CSHARP_ROSLYNATOR, CSS_STYLELINT, C_CLANG_FORMAT, C_CPPCHECK, C_CPPLINT, DART_DARTANALYZER, DOCKERFILE_HADOLINT, EDITORCONFIG_EDITORCONFIG_CHECKER, ENV_DOTENV_LINTER, GHERKIN_GHERKIN_LINT, GO_GOLANGCI_LINT, GO_REVIVE, GRAPHQL_GRAPHQL_SCHEMA_LINTER, GROOVY_NPM_GROOVY_LINT, HTML_DJLINT, HTML_HTMLHINT, JAVASCRIPT_ES, JAVASCRIPT_PRETTIER, JAVASCRIPT_STANDARD, JAVA_CHECKSTYLE, JAVA_PMD, JSON_ESLINT_PLUGIN_JSONC, JSON_JSONLINT, JSON_NPM_PACKAGE_JSON_LINT, JSON_V8R, JSX_ESLINT, KOTLIN_DETEKT, KOTLIN_KTLINT, KUBERNETES_HELM, KUBERNETES_KUBECONFORM, KUBERNETES_KUBESCAPE, LATEX_CHKTEX, LUA_LUACHECK, LUA_SELENE, LUA_STYLUA, MAKEFILE_CHECKMAKE, MARKDOWN_MARKDOWN_LINK_CHECK, MARKDOWN_MARKDOWN_TABLE_FORMATTER, MARKDOWN_REMARK_LINT, PERL_PERLCRITIC, PHP_PHPCS, PHP_PHPCSFIXER, PHP_PHPLINT, PHP_PHPSTAN, PHP_PSALM, POWERSHELL_POWERSHELL, POWERSHELL_POWERSHELL_FORMATTER, PROTOBUF_PROTOLINT, PUPPET_PUPPET_LINT, PYTHON_BANDIT, PYTHON_BLACK, PYTHON_FLAKE8, PYTHON_ISORT, PYTHON_MYPY, PYTHON_PYLINT, PYTHON_PYRIGHT, PYTHON_RUFF, PYTHON_RUFF_FORMAT, RAKU_RAKU, REPOSITORY_CHECKOV, REPOSITORY_DEVSKIM, REPOSITORY_DUSTILOCK, REPOSITORY_GITLEAKS, REPOSITORY_GIT_DIFF, REPOSITORY_GRYPE, REPOSITORY_KICS, REPOSITORY_LS_LINT, REPOSITORY_SECRETLINT, REPOSITORY_SEMGREP, REPOSITORY_SYFT, REPOSITORY_TRIVY, REPOSITORY_TRIVY_SBOM, REPOSITORY_TRUFFLEHOG, RST_RSTCHECK, RST_RSTFMT, RST_RST_LINT, RUBY_RUBOCOP, RUST_CLIPPY, R_LINTR, SALESFORCE_LIGHTNING_FLOW_SCANNER, SALESFORCE_SFDX_SCANNER_APEX, SALESFORCE_SFDX_SCANNER_AURA, SALESFORCE_SFDX_SCANNER_LWC, SCALA_SCALAFIX, SNAKEMAKE_LINT, SNAKEMAKE_SNAKEFMT, SPELL_CSPELL, SPELL_LYCHEE, SPELL_PROSELINT, SPELL_VALE, SQL_SQLFLUFF, SQL_TSQLLINT, SWIFT_SWIFTLINT, TEKTON_TEKTON_LINT, TERRAFORM_TERRAGRUNT, TERRAFORM_TERRASCAN, TERRAFORM_TFLINT, TSX_ESLINT, TYPESCRIPT_ES, TYPESCRIPT_PRETTIER, TYPESCRIPT_STANDARD, VBDOTNET_DOTNET_FORMAT, XML_XMLLINT, YAML_V8R, YAML_YAMLLINT
+[ApiReporter] Not enabled as API_REPORTER is not defined to true
+::endgroup::
+::group::MegaLinter now collects the files to analyse (expand for details)
+Listing updated files in [/github/workspace] using git diff.
+Modified files:
+.github/workflows/format-code.yml
+signed-commit/action.yml
+- File extensions: .json, .md, .tf, .yaml, .yml
+- Excluding .gitignored files [0]: 
+Kept [2] files on [2] found files
+
++----MATCHING LINTERS-+----------+----------------+------------+
+| Descriptor | Linter | Criteria | Matching files | Format/Fix |
++------------+--------+----------+----------------+------------+
+::endgroup::
+
++----SUMMARY-+--------+------+-------+-------+--------+----------+--------------+
+| Descriptor | Linter | Mode | Files | Fixed | Errors | Warnings | Elapsed time |
++------------+--------+------+-------+-------+--------+----------+--------------+
+
+[Updated Sources Reporter] No source file has been formatted or fixed
+[32m✅ Successfully linted all files without errors[0m
