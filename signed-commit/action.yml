@@ -98,8 +98,7 @@ runs:
     - name: Use current branch if on a PR
       if: env.changes == 'true' && github.event_name == 'pull_request'
       run: |
-        current_branch=$(git rev-parse --abbrev-ref HEAD)
-        echo "branch_name=$current_branch" >> $GITHUB_ENV
+        echo "branch_name=${GITHUB_HEAD_REF}" >> $GITHUB_ENV
       shell: bash
 
     - name: Prepare the changes for GraphQL
