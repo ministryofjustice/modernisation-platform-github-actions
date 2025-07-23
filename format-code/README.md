@@ -81,7 +81,7 @@ These inputs let you fine-tune MegaLinter behaviour. All are optional with sensi
 
 ## 🛠 Customization
 
-Although the workflow is optimized for Terraform-based repositories by default, you can override linters and inputs to tailor behavior to your codebase. Example:
+Although the workflow is optimized for Terraform-based repositories by default, you can override linters and inputs to tailor behaviour to your codebase. Example:
 
 ```yaml
 with:
