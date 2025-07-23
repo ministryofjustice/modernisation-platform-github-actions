@@ -183,13 +183,13 @@ runs:
         fi
       shell: bash
 
-    - name: Set PR title and body
+    - name: Set PR title and body    
       if: env.changes == 'true' && github.event_name != 'pull_request'
       run: |
         echo "pr_title=${{ inputs.pr_title }}" >> $GITHUB_ENV
         echo "pr_body=${{ inputs.pr_body }}" >> $GITHUB_ENV
       shell: bash
-
+                      
     - name: Create a PR if not running on a PR
       if: env.changes == 'true' && github.event_name != 'pull_request'
       run: |
@@ -222,3 +222,4 @@ runs:
           --title "$pr_title" \
           --body "$pr_body"
       shell: bash
+   
