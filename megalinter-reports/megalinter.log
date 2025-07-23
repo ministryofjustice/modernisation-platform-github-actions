@@ -12,7 +12,7 @@ The MegaLinter documentation can be found at:
 MegaLinter will analyze workspace [/github/workspace]
 GITHUB_REPOSITORY: ministryofjustice/modernisation-platform-github-actions
 GITHUB_REF: refs/pull/97/merge
-GITHUB_RUN_ID: 16465063805
+GITHUB_RUN_ID: 16465172524
 
 
 JSON_ESLINT_PLUGIN_JSONC has been disabled in MegaLinter for the following reason: Bug in eslint-plugin-jsonc: https://github.com/ota-meshi/eslint-plugin-jsonc/issues/328
@@ -25,10 +25,13 @@ Skipped linters: ACTION_ACTIONLINT, ANSIBLE_ANSIBLE_LINT, API_SPECTRAL, ARM_ARM_
 Listing updated files in [/github/workspace] using git diff.
 Modified files:
 .github/workflows/format-code.yml
+.gitignore
+megalinter-reports/IDE-config.txt
+megalinter-reports/megalinter.log
 signed-commit/action.yml
 - File extensions: .json, .md, .tf, .yaml, .yml
-- Excluding .gitignored files [0]: 
-Kept [2] files on [2] found files
+- Excluding .gitignored files [2]: megalinter-reports/IDE-config.txt, megalinter-reports/megalinter.log
+Kept [2] files on [5] found files
 
 +----MATCHING LINTERS-+----------+----------------+------------+
 | Descriptor | Linter | Criteria | Matching files | Format/Fix |
@@ -39,5 +42,5 @@ Kept [2] files on [2] found files
 | Descriptor | Linter | Mode | Files | Fixed | Errors | Warnings | Elapsed time |
 +------------+--------+------+-------+-------+--------+----------+--------------+
 
-[Updated Sources Reporter] No source file has been formatted or fixed
+[Updated Sources Reporter] copied 1 fixed source files in folder megalinter-reports/updated_sources.
 [32m✅ Successfully linted all files without errors[0m
