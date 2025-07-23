@@ -55,21 +55,21 @@ runs:
 
     - name: Get latest commit
       if: env.changes == 'true'
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
-        echo "===== Get latest commit ====="
-        if [ -n "${{ inputs.remote_repository_path }}" ]; then
-          cd "${{ inputs.remote_repository_path }}"
-        fi
-        base_branch=$(git rev-parse --abbrev-ref HEAD)
+        echo "===== Get latest commit SHA from GitHub API ====="
 
-        # Check if remote branch exists
-        if ! git rev-parse origin/$base_branch >/dev/null 2>&1; then
-          echo "No remote branch detected. Using local branch."
-          commit_oid=$(git rev-parse $base_branch)
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+          branch_name="${GITHUB_HEAD_REF}"
         else
-          commit_oid=$(git rev-parse origin/$base_branch)
+          branch_name="$(git rev-parse --abbrev-ref HEAD)"
         fi
-
+        echo "branch_name=$branch_name" >> $GITHUB_ENV
+        commit_oid=$(curl -s -H "Authorization: bearer $GITHUB_TOKEN" \
+          -H "Content-Type: application/json" \
+          https://api.github.com/repos/${GITHUB_REPOSITORY}/git/refs/heads/${branch_name} \
+          | jq -r '.object.sha')
         echo "commit_oid=$commit_oid" >> $GITHUB_ENV
       shell: bash
 
@@ -98,8 +98,7 @@ runs:
     - name: Use current branch if on a PR
       if: env.changes == 'true' && github.event_name == 'pull_request'
       run: |
-        current_branch=$(git rev-parse --abbrev-ref HEAD)
-        echo "branch_name=$current_branch" >> $GITHUB_ENV
+        echo "branch_name=${GITHUB_HEAD_REF}" >> $GITHUB_ENV
       shell: bash
 
     - name: Prepare the changes for GraphQL
