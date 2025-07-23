@@ -3,24 +3,25 @@ on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
 
-permissions:
-  contents: write
-  security-events: write  # needed for SARIF upload
+permissions: read-all
   
 jobs:
   format-code:
+    permissions:
+      contents: write
+      security-events: write  # needed for SARIF upload
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Run Format Code Action
-        uses: ministryofjustice/modernisation-platform-github-actions/format-code@1db7f5cad5d1a51dd8f24a315ab8d1043f93888e
+        uses: ministryofjustice/modernisation-platform-github-actions/format-code@5a785223c1daad1b5159106ff5d6c6d207628986
         with:
           ignore_files: "README.md"
 
       - name: Run Signed Commit Action
-        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@1db7f5cad5d1a51dd8f24a315ab8d1043f93888e
+        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@5a785223c1daad1b5159106ff5d6c6d207628986
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_title: "GitHub Actions Code Formatter workflow"
