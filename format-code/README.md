@@ -15,6 +15,7 @@ To create pull requests with signed commits containing any fixes, you can chain 
 - Pre-configured with optimized linters for Terraform repositories
 - Uploads SARIF reports to GitHub Security tab for actionable insights
 - Fully configurable via workflow inputs
+- Automatically determines whether to lint all files or only changed ones
 
 ---
 
@@ -28,6 +29,9 @@ name: Format Code
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
+
+  schedule:
+    - cron: "0 0 * * 0" # Optional: runs weekly to lint whole codebase
 
 permissions:
   contents: write
@@ -55,19 +59,32 @@ jobs:
 
 These inputs let you fine-tune MegaLinter behaviour. All are optional with sensible defaults:
 
-| Name                                         | Default Value                                                               | Description                                                           |
-| -------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `apply_fixes`                                | `all`                                                                       | What to fix (e.g., `none`, `all`)                                     |
-| `apply_fixes_event`                          | `all`                                                                       | When to apply fixes (`push`, `pull_request`, `all`)                   |
-| `apply_fixes_mode`                           | `pull_request`                                                              | How to apply fixes (`commit` or `pull_request`)                       |
-| `disable_errors`                             | `true`                                                                      | If `true`, warnings do not fail the job                               |
-| `email_reporter`                             | `false`                                                                     | If `true`, sends email reports                                        |
-| `enable_linters`                             | `JSON_PRETTIER,YAML_PRETTIER,TERRAFORM_TERRAFORM_FMT,MARKDOWN_MARKDOWNLINT` | Comma-separated list of linters to enable                             |
-| `ignore_files`                               | `""`                                                                        | Glob patterns of files to exclude                                     |
-| `markdown_markdownlint_filter_regex_exclude` | `""`                                                                        | Regex pattern to exclude specific Markdown files                      |
-| `report_output_folder`                       | `megalinter-reports`                                                        | Folder to output MegaLinter reports to                                |
-| `validate_all_codebase`                      | `false`                                                                     | If `true`, lints the entire codebase regardless of changes            |
-| `yaml_prettier_filter_regex_exclude`         | `(.github/*)`                                                               | Regex pattern to exclude YAML files (default excludes GitHub configs) |
+| Name                                         | Default Value                                                               | Description                                                                                                                                                                          |
+| -------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apply_fixes`                                | `all`                                                                       | What to fix (e.g., `none`, `all`)                                                                                                                                                    |
+| `apply_fixes_event`                          | `all`                                                                       | When to apply fixes (`push`, `pull_request`, `all`)                                                                                                                                  |
+| `apply_fixes_mode`                           | `pull_request`                                                              | How to apply fixes (`commit` or `pull_request`)                                                                                                                                      |
+| `disable_errors`                             | `true`                                                                      | If `true`, warnings do not fail the job                                                                                                                                              |
+| `email_reporter`                             | `false`                                                                     | If `true`, sends email reports                                                                                                                                                       |
+| `enable_linters`                             | `JSON_PRETTIER,YAML_PRETTIER,TERRAFORM_TERRAFORM_FMT,MARKDOWN_MARKDOWNLINT` | Comma-separated list of linters to enable                                                                                                                                            |
+| `ignore_files`                               | `""`                                                                        | Glob patterns of files to exclude                                                                                                                                                    |
+| `markdown_markdownlint_filter_regex_exclude` | `""`                                                                        | Regex pattern to exclude specific Markdown files                                                                                                                                     |
+| `report_output_folder`                       | `megalinter-reports`                                                        | Folder to output MegaLinter reports to                                                                                                                                               |
+| `validate_all_codebase`                      | _(dynamic)_                                                                 | If set, overrides default logic to determine whether to lint the full codebase. By default, the full codebase is only validated on `push` or `schedule` events to the `main` branch. |
+| `yaml_prettier_filter_regex_exclude`         | `(.github/*)`                                                               | Regex pattern to exclude YAML files (default excludes GitHub configs)                                                                                                                |
+
+---
+
+## 🧠 Codebase Validation Logic
+
+By default, the `validate_all_codebase` behaviour is determined automatically:
+
+- ✅ **Full codebase is scanned** when:
+  - The event is `push` or `schedule`, **and**
+  - The branch is `main`
+- 🔁 **Only changed files are scanned** for other events (e.g., PRs to feature branches)
+
+You can override this logic explicitly by setting the `validate_all_codebase` input to `true` or `false`.
 
 ---
 

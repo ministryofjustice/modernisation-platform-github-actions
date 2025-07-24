@@ -50,7 +50,7 @@ inputs:
   validate_all_codebase:
     description: "Whether to lint the whole codebase or just changed files"
     required: false
-    default: "false"
+    default: ""
 
   yaml_prettier_filter_regex_exclude:
     description: "Regex for excluding YAML files from prettier"
@@ -79,7 +79,7 @@ runs:
         MARKDOWN_MARKDOWNLINT_FILTER_REGEX_EXCLUDE: ${{ inputs.markdown_markdownlint_filter_regex_exclude }}
         REPORT_OUTPUT_FOLDER: ${{ inputs.report_output_folder }}
         REPORTERS: sarif
-        VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase }}
+        VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase != '' && inputs.validate_all_codebase || ((github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main' && 'true') || 'false' }}
         YAML_PRETTIER_FILTER_REGEX_EXCLUDE: ${{ inputs.yaml_prettier_filter_regex_exclude }}
 
     - name: Archive MegaLinter Reports
