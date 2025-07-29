@@ -83,6 +83,12 @@ runs:
         echo "✅ Using branch: $branch_name"
         echo "branch_name=$branch_name" >> $GITHUB_ENV
 
+        # Proper fallback for GITHUB_TOKEN
+        GITHUB_TOKEN="${{ inputs.github_token }}"
+        if [ -z "$GITHUB_TOKEN" ]; then
+          GITHUB_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
+        fi
+
         commit_oid=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
           -H "Content-Type: application/json" \
           "https://api.github.com/repos/${github_repo}/git/refs/heads/${branch_name}" \
