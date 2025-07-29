@@ -58,18 +58,31 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
-        echo "===== Get latest commit SHA from GitHub API ====="
-
+        echo "===== Determine latest commit SHA ====="
         if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
           branch_name="${GITHUB_HEAD_REF}"
         else
-          branch_name="$(git rev-parse --abbrev-ref HEAD)"
+          branch_name="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
         fi
+
+        if [ -z "$branch_name" ]; then
+          echo "❌ Could not determine branch name"
+          exit 1
+        fi
+
         echo "branch_name=$branch_name" >> $GITHUB_ENV
-        commit_oid=$(curl -s -H "Authorization: bearer $GITHUB_TOKEN" \
+
+        commit_oid=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
           -H "Content-Type: application/json" \
-          https://api.github.com/repos/${GITHUB_REPOSITORY}/git/refs/heads/${branch_name} \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/refs/heads/${branch_name}" \
           | jq -r '.object.sha')
+
+        if [ -z "$commit_oid" ] || [ "$commit_oid" = "null" ]; then
+          echo "❌ Failed to fetch commit SHA from GitHub API"
+          exit 1
+        fi
+
+        echo "✅ Commit OID resolved: $commit_oid"
         echo "commit_oid=$commit_oid" >> $GITHUB_ENV
       shell: bash
 
