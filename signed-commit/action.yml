@@ -58,18 +58,48 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
-        echo "===== Get latest commit SHA from GitHub API ====="
-
-        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-          branch_name="${GITHUB_HEAD_REF}"
+        echo "===== Determine latest commit SHA ====="
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+          github_repo="${{ inputs.remote_repository }}"
         else
-          branch_name="$(git rev-parse --abbrev-ref HEAD)"
+          github_repo="${GITHUB_REPOSITORY}"
         fi
+
+        # Try to get the current branch
+        branch_name="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+
+        # Fallback to remote HEAD if symbolic-ref fails (e.g., detached HEAD)
+        if [ -z "$branch_name" ]; then
+          echo "⚠️ Could not determine branch from symbolic-ref, trying remote HEAD..."
+          branch_name="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
+        fi
+
+        if [ -z "$branch_name" ]; then
+          echo "❌ Could not determine branch name"
+          exit 1
+        fi
+
+        echo "✅ Using branch: $branch_name"
         echo "branch_name=$branch_name" >> $GITHUB_ENV
-        commit_oid=$(curl -s -H "Authorization: bearer $GITHUB_TOKEN" \
+
+        # Proper fallback for GITHUB_TOKEN
+        GITHUB_TOKEN="${{ inputs.github_token }}"
+        if [ -z "$GITHUB_TOKEN" ]; then
+          GITHUB_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
+        fi
+
+        commit_oid=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
           -H "Content-Type: application/json" \
-          https://api.github.com/repos/${GITHUB_REPOSITORY}/git/refs/heads/${branch_name} \
+          "https://api.github.com/repos/${github_repo}/git/refs/heads/${branch_name}" \
           | jq -r '.object.sha')
+
+        if [ -z "$commit_oid" ] || [ "$commit_oid" = "null" ]; then
+          echo "❌ Failed to fetch commit SHA from GitHub API"
+          exit 1
+        fi
+
+        echo "✅ Commit OID resolved: $commit_oid"
         echo "commit_oid=$commit_oid" >> $GITHUB_ENV
       shell: bash
 
@@ -176,9 +206,9 @@ runs:
         COMMIT_OID=$(echo "$RESPONSE" | jq -r ".data.createCommitOnBranch.commit.oid")
 
         if [ "$COMMIT_OID" != "null" ]; then
-          echo "Commit successfully created with OID: $COMMIT_OID"
+          echo "✅ Commit successfully created with OID: $COMMIT_OID"
         else
-          echo "Error creating commit: $RESPONSE"
+          echo "❌ Error creating commit: $RESPONSE"
           exit 1
         fi
       shell: bash
