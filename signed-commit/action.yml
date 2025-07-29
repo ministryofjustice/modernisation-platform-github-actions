@@ -59,10 +59,17 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
         echo "===== Determine latest commit SHA ====="
-        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-          branch_name="${GITHUB_HEAD_REF}"
-        else
-          branch_name="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+        fi
+
+        # Try to get the current branch
+        branch_name="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+
+        # Fallback to remote HEAD if symbolic-ref fails (e.g., detached HEAD)
+        if [ -z "$branch_name" ]; then
+          echo "⚠️ Could not determine branch from symbolic-ref, trying remote HEAD..."
+          branch_name="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
         fi
 
         if [ -z "$branch_name" ]; then
@@ -70,6 +77,7 @@ runs:
           exit 1
         fi
 
+        echo "✅ Using branch: $branch_name"
         echo "branch_name=$branch_name" >> $GITHUB_ENV
 
         commit_oid=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -85,6 +93,7 @@ runs:
         echo "✅ Commit OID resolved: $commit_oid"
         echo "commit_oid=$commit_oid" >> $GITHUB_ENV
       shell: bash
+
 
     - name: Generate new branch
       if: env.changes == 'true' && github.event_name != 'pull_request'
@@ -189,9 +198,9 @@ runs:
         COMMIT_OID=$(echo "$RESPONSE" | jq -r ".data.createCommitOnBranch.commit.oid")
 
         if [ "$COMMIT_OID" != "null" ]; then
-          echo "Commit successfully created with OID: $COMMIT_OID"
+          echo "✅ Commit successfully created with OID: $COMMIT_OID"
         else
-          echo "Error creating commit: $RESPONSE"
+          echo "❌ Error creating commit: $RESPONSE"
           exit 1
         fi
       shell: bash
