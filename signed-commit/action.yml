@@ -30,6 +30,7 @@ runs:
   using: "composite"
   steps:
     - name: Check for changes
+      shell: bash
       run: |
         # Show the status and diff before attempting to add files
         echo "===== Check for changes ====="
@@ -51,88 +52,53 @@ runs:
           git diff --staged --name-only > changed_files.txt
           cat changed_files.txt
         fi
-      shell: bash
 
     - name: Get latest commit
       if: env.changes == 'true'
-      env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
+      id: get_latest_commit
+      shell: bash
       run: |
         echo "===== Determine latest commit SHA ====="
+        set -e
+
         if [ -n "${{ inputs.remote_repository_path }}" ]; then
-          cd "${{ inputs.remote_repository_path }}"
           github_repo="${{ inputs.remote_repository }}"
+          GITHUB_TOKEN="${{ inputs.terraform_github_token }}"
+          if [ -z "$GITHUB_TOKEN" ]; then
+            GITHUB_TOKEN="${{ inputs.github_token }}"
+          fi
         else
           github_repo="${GITHUB_REPOSITORY}"
+          GITHUB_TOKEN="${{ inputs.github_token }}"
+          if [ -z "$GITHUB_TOKEN" ]; then
+            GITHUB_TOKEN="${{ github.token }}"
+          fi
         fi
 
-        # Try to get the current branch
-        branch_name="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+        branch_name="${GITHUB_REF_NAME}"
+        echo "Fetching latest commit for $github_repo on branch $branch_name..."
+        api_url="https://api.github.com/repos/$github_repo/commits/$branch_name"
+        api_response=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" "$api_url")
 
-        # Fallback to remote HEAD if symbolic-ref fails (e.g., detached HEAD)
-        if [ -z "$branch_name" ]; then
-          echo "⚠️ Could not determine branch from symbolic-ref, trying remote HEAD..."
-          branch_name="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
-        fi
+        safe_response=$(echo "$api_response" | jq '{message: .commit.message, sha: .sha}')
+        echo "Latest commit: $safe_response"
 
-        if [ -z "$branch_name" ]; then
-          echo "❌ Could not determine branch name"
-          exit 1
-        fi
+        commit_oid=$(echo "$api_response" | jq -r '.sha')
 
-        echo "✅ Using branch: $branch_name"
         echo "branch_name=$branch_name" >> $GITHUB_ENV
-
-        # Proper fallback for GITHUB_TOKEN
-        GITHUB_TOKEN="${{ inputs.github_token }}"
-        if [ -z "$GITHUB_TOKEN" ]; then
-          GITHUB_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
-        fi
-
-        commit_oid=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-          -H "Content-Type: application/json" \
-          "https://api.github.com/repos/${github_repo}/git/refs/heads/${branch_name}" \
-          | jq -r '.object.sha')
-
-        if [ -z "$commit_oid" ] || [ "$commit_oid" = "null" ]; then
-          echo "❌ Failed to fetch commit SHA from GitHub API"
-          exit 1
-        fi
-
-        echo "✅ Commit OID resolved: $commit_oid"
         echo "commit_oid=$commit_oid" >> $GITHUB_ENV
-      shell: bash
-
-    - name: Generate new branch
-      if: env.changes == 'true' && github.event_name != 'pull_request'
-      env:
-        GITHUB_TOKEN: ${{ inputs.terraform_github_token || env.TERRAFORM_GITHUB_TOKEN || inputs.github_token }}
-      run: |
-        echo "===== Generate new branch ====="
-        if [ -n "${{ inputs.remote_repository_path }}" ]; then
-          cd "${{ inputs.remote_repository_path }}"
-        fi
-
-        date=$(date +%Y_%m_%d_%H_%M)
-        branch_name="signed_commit_$date"
-        git checkout -b $branch_name
-
-        if [ -n "${{ inputs.remote_repository }}" ]; then
-          git remote set-url origin "https://x-access-token:$GITHUB_TOKEN@github.com/${{ inputs.remote_repository }}.git"
-        fi
-
-        git push -u origin $branch_name
-        echo "branch_name=$branch_name" >> $GITHUB_ENV
-      shell: bash
+        echo "github_repo=$github_repo" >> $GITHUB_ENV
+        echo "GITHUB_TOKEN=$GITHUB_TOKEN" >> $GITHUB_ENV
 
     - name: Use current branch if on a PR
       if: env.changes == 'true' && github.event_name == 'pull_request'
+      shell: bash
       run: |
         echo "branch_name=${GITHUB_HEAD_REF}" >> $GITHUB_ENV
-      shell: bash
 
     - name: Prepare the changes for GraphQL
       if: env.changes == 'true'
+      shell: bash
       run: |
         echo "===== Prepare the changes for GraphQL ====="
         if [ -n "${{ inputs.remote_repository_path }}" ]; then
@@ -148,31 +114,20 @@ runs:
             base64_content=$(base64 < "$file" | tr -d '\n')
 
             # Construct a JSON object for this file and append it to the additions array
-            files_for_commit=$(echo "$files_for_commit" | jq --arg path "$file" --arg content "$base64_content" \
-              '.additions += [{ "path": $path, "contents": $content }]')
+            files_for_commit=$(echo "$files_for_commit" | jq --arg path "$file" --arg content "$base64_content" '.additions += [{ "path": $path, "contents": $content }]')
           fi
         done < changed_files.txt
-
-        # Output the final JSON array
         echo "$files_for_commit" > files_for_commit.json
-      shell: bash
 
     - name: Create signed commit using GraphQL
       if: env.changes == 'true'
+      shell: bash
       run: |
         echo "===== Create signed commit using GraphQL ====="
-        if [ -n "${{ inputs.remote_repository_path }}" ]; then
-          cd "${{ inputs.remote_repository_path }}"
-          github_repo="${{ inputs.remote_repository }}"
-        else
-          github_repo="${{ github.repository }}"
-        fi
-
-        # Fallback for GITHUB_TOKEN if not set
-        GITHUB_TOKEN="${{ inputs.github_token }}"
-        if [ -z "$GITHUB_TOKEN" ]; then
-          GITHUB_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
-        fi
+        github_repo="$github_repo"
+        branch_name="$branch_name"
+        commit_oid="$commit_oid"
+        GITHUB_TOKEN="$GITHUB_TOKEN"
 
         commit_message="Automated signed commit update"
 
@@ -190,9 +145,7 @@ runs:
                   repositoryNameWithOwner: $repository,
                   branchName: $branch_name
                 },
-                message: {
-                  headline: $commit_message
-                },
+                message: { headline: $commit_message },
                 fileChanges: $fileChanges[0],
                 expectedHeadOid: $commit_oid
               }
@@ -211,44 +164,35 @@ runs:
           echo "❌ Error creating commit: $RESPONSE"
           exit 1
         fi
-      shell: bash
 
     - name: Set PR title and body
       if: env.changes == 'true' && github.event_name != 'pull_request'
-      run: |
-        echo "pr_title=${{ inputs.pr_title }}" >> $GITHUB_ENV
-        echo "pr_body=${{ inputs.pr_body }}" >> $GITHUB_ENV
       shell: bash
+      run: |
+        echo "PR_TITLE=${{ inputs.pr_title }}" >> $GITHUB_ENV
+        echo "PR_BODY=${{ inputs.pr_body }}" >> $GITHUB_ENV
 
     - name: Create a PR if not running on a PR
       if: env.changes == 'true' && github.event_name != 'pull_request'
+      shell: bash
       run: |
         echo "===== Create a PR if not running on a PR ====="
-
-        # Fallback for GH_TOKEN
-        GH_TOKEN="${{ inputs.github_token }}"
-        if [ -z "$GH_TOKEN" ]; then
-          GH_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GH_TOKEN}}"
-        fi
-
-        if [ -z "$GH_TOKEN" ]; then
-          echo "GH_TOKEN is not set. Exiting..."
-          exit 1
-        fi
-
+        GH_TOKEN="$GITHUB_TOKEN"
         export GH_TOKEN
 
         repo_option=""
         if [ -n "${{ inputs.remote_repository }}" ]; then
-          repo_option="--repo github.com/${{ inputs.remote_repository }}"
+          repo_option="--repo $github_repo"
         fi
 
-        pr_title="${pr_title:-Automated Signed Commit Update}"
-        pr_body="${pr_body:-This PR was automatically created by a GitHub workflow to apply a signed commit update.}"
+        # Get default branch dynamically
+        DEFAULT_BRANCH=$(curl -s -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$github_repo" | jq -r '.default_branch')
+
+        pr_title="${PR_TITLE:-Automated Signed Commit Update}"
+        pr_body="${PR_BODY:-This PR was automatically created by a GitHub workflow to apply a signed commit update.}"
 
         gh pr create $repo_option \
-          --base main \
-          --head "${branch_name}" \
+          --base "$DEFAULT_BRANCH" \
+          --head "$branch_name" \
           --title "$pr_title" \
           --body "$pr_body"
-      shell: bash
