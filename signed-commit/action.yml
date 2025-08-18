@@ -3,65 +3,38 @@ description: "Creates a signed commit using GitHub GraphQL and optionally create
 author: "Aaron Robinson"
 
 inputs:
-  github_token:
-    description: "GitHub token used for authenticated operations"
-    required: true
   git_path:
     description: "Path used by git to add files"
     required: false
     default: "."
+  pr_title:
+    description: "Title for the PR (only required if creating a new PR)"
+    required: false
+  pr_body:
+    description: "Body for the PR (only required if creating a new PR)"
+    required: false
+  github_token:
+    description: "GitHub token with permissions to commit and create PRs"
+    required: true
+  terraform_github_token:
+    description: "GitHub token used for operations against the remote repository"
+    required: false
   remote_repository:
-    description: "Optional remote repository in 'owner/repo' format"
+    description: "The remote repository organisation & name if the changes are to be pushed to a remote repository"
     required: false
   remote_repository_path:
-    description: "Path where the remote repository is cloned"
+    description: "Path to the remote repository's local git directory"
     required: false
-  pr_title:
-    description: "Title of the pull request"
-    required: false
-    default: "Automated code changes"
-  pr_body:
-    description: "Body of the pull request"
-    required: false
-    default: "This PR was created automatically by Signed Commit Action"
 
 runs:
   using: "composite"
   steps:
-    - name: Determine repository and branch
-      id: repo_info
-      shell: bash
-      run: |
-        repo="${{ inputs.remote_repository }}"
-        if [ -z "$repo" ]; then
-          repo="${GITHUB_REPOSITORY}"
-        fi
-        branch="${GITHUB_REF_NAME}"
-
-        echo "repository=$repo" >> $GITHUB_ENV
-        echo "branch=$branch" >> $GITHUB_ENV
-
-        echo "===== Repo & Branch Info ====="
-        echo "Repository: $repo"
-        echo "Branch: $branch"
-
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ env.repository }}
-        path: ${{ inputs.remote_repository_path || '.' }}
-        fetch-depth: 0
-        token: ${{ inputs.github_token }}
-
     - name: Check for changes
-      shell: bash
       run: |
-        # Show the status and diff before attempting to add files
         echo "===== Check for changes ====="
         if [ -n "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
         fi
-
         git_path="${{ inputs.git_path }}"
         git status
         git diff
@@ -72,73 +45,194 @@ runs:
           echo "No changes detected."
           echo "changes=false" >> $GITHUB_ENV
         else
-          echo "Changes detected:"
-          echo "$changes"
+          echo "Changes detected."
           echo "changes=true" >> $GITHUB_ENV
           git diff --staged --name-only > changed_files.txt
           cat changed_files.txt
         fi
+      shell: bash
+
+    - name: Get latest commit
+      if: env.changes == 'true'
+      run: |
+        echo "===== Determine latest commit SHA ====="
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+          github_repo="${{ inputs.remote_repository }}"
+        else
+          github_repo="${GITHUB_REPOSITORY}"
+        fi
+
+        # Try to get the current branch
+        branch_name="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+        if [ -z "$branch_name" ]; then
+          echo "⚠️ Falling back to remote HEAD..."
+          branch_name="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
+        fi
+        if [ -z "$branch_name" ]; then
+          echo "❌ Could not determine branch name"
+          exit 1
+        fi
+
+        echo "✅ Using branch: $branch_name"
+        echo "branch_name=$branch_name" >> $GITHUB_ENV
+
+        # Choose correct token
+        TOKEN="${{ inputs.github_token }}"
+        if [ -z "$TOKEN" ] && [ -n "${{ inputs.terraform_github_token }}" ]; then
+          TOKEN="${{ inputs.terraform_github_token }}"
+        fi
+
+        commit_oid=$(curl -s -H "Authorization: Bearer $TOKEN" \
+          -H "Content-Type: application/json" \
+          "https://api.github.com/repos/${github_repo}/git/refs/heads/${branch_name}" \
+          | jq -r '.object.sha')
+
+        if [ -z "$commit_oid" ] || [ "$commit_oid" = "null" ]; then
+          echo "❌ Failed to fetch commit SHA"
+          exit 1
+        fi
+
+        echo "✅ Commit OID resolved: $commit_oid"
+        echo "commit_oid=$commit_oid" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Generate new branch
+      if: env.changes == 'true' && github.event_name != 'pull_request'
+      run: |
+        echo "===== Generate new branch ====="
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+        fi
+
+        date=$(date +%Y_%m_%d_%H_%M)
+        branch_name="signed_commit_$date"
+        git checkout -b $branch_name
+
+        # Select correct token
+        TOKEN="${{ inputs.terraform_github_token || inputs.github_token }}"
+        if [ -n "${{ inputs.remote_repository }}" ]; then
+          git remote set-url origin "https://x-access-token:$TOKEN@github.com/${{ inputs.remote_repository }}.git"
+        fi
+
+        git push -u origin $branch_name
+        echo "branch_name=$branch_name" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Use current branch if on a PR
+      if: env.changes == 'true' && github.event_name == 'pull_request'
+      run: |
+        echo "branch_name=${GITHUB_HEAD_REF}" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Prepare the changes for GraphQL
+      if: env.changes == 'true'
+      run: |
+        echo "===== Prepare the changes for GraphQL ====="
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+        fi
+        files_for_commit='{"additions": []}'
+
+        while IFS= read -r file; do
+          if [[ -f "$file" ]]; then
+            base64_content=$(base64 < "$file" | tr -d '\n')
+            files_for_commit=$(echo "$files_for_commit" | jq --arg path "$file" --arg content "$base64_content" \
+              '.additions += [{ "path": $path, "contents": $content }]')
+          fi
+        done < changed_files.txt
+
+        echo "$files_for_commit" > files_for_commit.json
+      shell: bash
 
     - name: Create signed commit using GraphQL
       if: env.changes == 'true'
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
-        repo="${{ env.repository }}"
-        owner="${repo%%/*}"
-        name="${repo##*/}"
-        branch="${{ env.branch }}"
-        
-        echo "Creating signed commit on $repo@$branch"
-
-        # Get HEAD oid
-        head_oid=$(gh api graphql -f query='
-        query($owner: String!, $name: String!, $branch: String!) {
-          repository(owner: $owner, name: $name) {
-            ref(qualifiedName: $branch) {
-              target { oid }
-            }
-          }
-        }' -F owner="$owner" -F name="$name" -F branch="$branch" --jq '.data.repository.ref.target.oid')
-
-        files_json="[]"
-        while IFS= read -r file; do
-          content=$(base64 -w0 "$file")
-          files_json=$(jq --arg path "$file" --arg contents "$content" '. + [{"path": $path, "contents": $contents}]' <<< "$files_json")
-        done < changed_files.txt
-
-        mutation=$(jq -n --arg repoId "$(gh api graphql -f query='
-        query($owner: String!, $name: String!) {
-          repository(owner: $owner, name: $name) { id }
-        }' -F owner="$owner" -F name="$name" --jq '.data.repository.id')" \
-        --arg branch "$branch" \
-        --arg message "Automated commit" \
-        --arg oid "$head_oid" \
-        --argjson files "$files_json" \
-        '{ query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }", variables: { input: { branch: { repositoryNameWithOwner: "'$repo'", branchName: $branch }, message: { headline: $message }, fileChanges: { additions: $files }, expectedHeadOid: $oid } } }')
-
-        echo "$mutation" | gh api graphql --input -
-
-    - name: Create pull request
-      if: env.changes == 'true'
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
-      run: |
-        echo "Creating PR for ${{ env.repository }}@${{ env.branch }}"
-        gh pr create \
-          --title "${{ inputs.pr_title }}" \
-          --body "${{ inputs.pr_body }}" \
-          --head "${{ env.branch }}" \
-          --repo "${{ env.repository }}"
-
-    - name: Final summary
-      shell: bash
-      run: |
-        echo "===== Final Summary ====="
-        if [ "${{ env.changes }}" = "true" ]; then
-          echo "✅ Commit + PR created on ${{ env.repository }}@${{ env.branch }}"
+        echo "===== Create signed commit using GraphQL ====="
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+          github_repo="${{ inputs.remote_repository }}"
         else
-          echo "✅ No changes detected. Nothing to commit."
+          github_repo="${{ github.repository }}"
         fi
+
+        TOKEN="${{ inputs.github_token }}"
+        if [ -z "$TOKEN" ] && [ -n "${{ inputs.terraform_github_token }}" ]; then
+          TOKEN="${{ inputs.terraform_github_token }}"
+        fi
+
+        commit_message="Automated signed commit update"
+
+        jq -n \
+          --arg repository "$github_repo" \
+          --arg branch_name "$branch_name" \
+          --arg commit_oid "$commit_oid" \
+          --arg commit_message "$commit_message" \
+          --slurpfile fileChanges files_for_commit.json \
+          '{
+            query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }",
+            variables: {
+              input: {
+                branch: {
+                  repositoryNameWithOwner: $repository,
+                  branchName: $branch_name
+                },
+                message: { headline: $commit_message },
+                fileChanges: $fileChanges[0],
+                expectedHeadOid: $commit_oid
+              }
+            }
+          }' > mutation_payload.json
+
+        RESPONSE=$(curl -s -X POST -H "Authorization: bearer $TOKEN" \
+          -H "Content-Type: application/json" \
+          --data @mutation_payload.json https://api.github.com/graphql)
+
+        COMMIT_OID=$(echo "$RESPONSE" | jq -r ".data.createCommitOnBranch.commit.oid")
+
+        if [ "$COMMIT_OID" != "null" ]; then
+          echo "✅ Commit successfully created with OID: $COMMIT_OID"
+        else
+          echo "❌ Error creating commit: $RESPONSE"
+          exit 1
+        fi
+      shell: bash
+
+    - name: Set PR title and body
+      if: env.changes == 'true' && github.event_name != 'pull_request'
+      run: |
+        echo "pr_title=${{ inputs.pr_title }}" >> $GITHUB_ENV
+        echo "pr_body=${{ inputs.pr_body }}" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Create a PR if not running on a PR
+      if: env.changes == 'true' && github.event_name != 'pull_request'
+      run: |
+        echo "===== Create a PR ====="
+
+        TOKEN="${{ inputs.github_token }}"
+        if [ -z "$TOKEN" ] && [ -n "${{ inputs.terraform_github_token }}" ]; then
+          TOKEN="${{ inputs.terraform_github_token }}"
+        fi
+
+        if [ -z "$TOKEN" ]; then
+          echo "❌ No valid GitHub token available."
+          exit 1
+        fi
+
+        export GH_TOKEN="$TOKEN"
+
+        repo_option=""
+        if [ -n "${{ inputs.remote_repository }}" ]; then
+          repo_option="--repo github.com/${{ inputs.remote_repository }}"
+        fi
+
+        pr_title="${pr_title:-Automated Signed Commit Update}"
+        pr_body="${pr_body:-This PR was automatically created by a GitHub workflow to apply a signed commit update.}"
+
+        gh pr create $repo_option \
+          --base main \
+          --head "${branch_name}" \
+          --title "$pr_title" \
+          --body "$pr_body"
+      shell: bash
