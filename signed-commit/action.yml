@@ -52,8 +52,7 @@ runs:
         fi
       shell: bash
 
-    - name: Get latest commit
-      if: env.changes == 'true'
+    - name: Determine latest commit SHA
       run: |
         echo "===== Determine latest commit SHA ====="
         if [ -n "${{ inputs.remote_repository_path }}" ]; then
@@ -63,7 +62,7 @@ runs:
           github_repo="${GITHUB_REPOSITORY}"
         fi
 
-        # Try to get the current branch
+        # Get current branch
         branch_name="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
         if [ -z "$branch_name" ]; then
           echo "⚠️ Falling back to remote HEAD..."
@@ -78,12 +77,14 @@ runs:
         echo "branch_name=$branch_name" >> $GITHUB_ENV
 
         # Choose correct token
-        TOKEN="${{ inputs.github_token }}"
-        if [ -z "$TOKEN" ] && [ -n "${{ inputs.terraform_github_token }}" ]; then
-          TOKEN="${{ inputs.terraform_github_token }}"
+        TOKEN="${{ inputs.github_token || env.TERRAFORM_GITHUB_TOKEN }}"
+        if [ -z "$TOKEN" ]; then
+          echo "❌ No token available for API call"
+          exit 1
         fi
 
-        commit_oid=$(curl -s -H "Authorization: Bearer $TOKEN" \
+        commit_oid=$(curl -s \
+          -H "Authorization: token $TOKEN" \
           -H "Content-Type: application/json" \
           "https://api.github.com/repos/${github_repo}/git/refs/heads/${branch_name}" \
           | jq -r '.object.sha')
@@ -96,6 +97,7 @@ runs:
         echo "✅ Commit OID resolved: $commit_oid"
         echo "commit_oid=$commit_oid" >> $GITHUB_ENV
       shell: bash
+
 
     - name: Generate new branch
       if: env.changes == 'true' && github.event_name != 'pull_request'
