@@ -59,17 +59,12 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
         echo "===== Determine latest commit SHA ====="
-        if [ -n "${{ inputs.remote_repository_path }}" ]; then
-          cd "${{ inputs.remote_repository_path }}"
-          github_repo="${{ inputs.remote_repository }}"
-        else
-          github_repo="${GITHUB_REPOSITORY}"
-        fi
 
-        # Try to get the current branch
+        # Determine GitHub repository
+        github_repo="${GITHUB_REPOSITORY}"
+
+        # Determine current branch
         branch_name="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
-
-        # Fallback to remote HEAD if symbolic-ref fails (e.g., detached HEAD)
         if [ -z "$branch_name" ]; then
           echo "⚠️ Could not determine branch from symbolic-ref, trying remote HEAD..."
           branch_name="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
@@ -83,14 +78,17 @@ runs:
         echo "✅ Using branch: $branch_name"
         echo "branch_name=$branch_name" >> $GITHUB_ENV
 
-        # Proper fallback for GITHUB_TOKEN
-        GITHUB_TOKEN="${{ inputs.github_token }}"
+        # Choose token: prefer provided, fallback to default
+        GITHUB_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
         if [ -z "$GITHUB_TOKEN" ]; then
-          GITHUB_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
+          echo "❌ No GitHub token available"
+          exit 1
         fi
 
-        commit_oid=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-          -H "Content-Type: application/json" \
+        # Call GitHub API to get the latest commit SHA
+        commit_oid=$(curl -s \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github+json" \
           "https://api.github.com/repos/${github_repo}/git/refs/heads/${branch_name}" \
           | jq -r '.object.sha')
 
