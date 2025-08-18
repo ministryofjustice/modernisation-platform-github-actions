@@ -31,6 +31,7 @@ runs:
   steps:
     - name: Check for changes
       run: |
+        # Show the status and diff before attempting to add files
         echo "===== Check for changes ====="
         if [ -n "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
@@ -52,7 +53,10 @@ runs:
         fi
       shell: bash
 
-    - name: Determine latest commit SHA
+    - name: Get latest commit
+      if: env.changes == 'true'
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
         echo "===== Determine latest commit SHA ====="
         if [ -n "${{ inputs.remote_repository_path }}" ]; then
@@ -62,12 +66,15 @@ runs:
           github_repo="${GITHUB_REPOSITORY}"
         fi
 
-        # Get current branch
+        # Try to get the current branch
         branch_name="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+
+        # Fallback to remote HEAD if symbolic-ref fails (e.g., detached HEAD)
         if [ -z "$branch_name" ]; then
-          echo "⚠️ Falling back to remote HEAD..."
+          echo "⚠️ Could not determine branch from symbolic-ref, trying remote HEAD..."
           branch_name="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
         fi
+
         if [ -z "$branch_name" ]; then
           echo "❌ Could not determine branch name"
           exit 1
@@ -76,21 +83,19 @@ runs:
         echo "✅ Using branch: $branch_name"
         echo "branch_name=$branch_name" >> $GITHUB_ENV
 
-        # Choose correct token
-        TOKEN="${{ inputs.github_token || env.TERRAFORM_GITHUB_TOKEN }}"
-        if [ -z "$TOKEN" ]; then
-          echo "❌ No token available for API call"
-          exit 1
+        # Proper fallback for GITHUB_TOKEN
+        GITHUB_TOKEN="${{ inputs.github_token }}"
+        if [ -z "$GITHUB_TOKEN" ]; then
+          GITHUB_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
         fi
 
-        commit_oid=$(curl -s \
-          -H "Authorization: token $TOKEN" \
+        commit_oid=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
           -H "Content-Type: application/json" \
           "https://api.github.com/repos/${github_repo}/git/refs/heads/${branch_name}" \
           | jq -r '.object.sha')
 
         if [ -z "$commit_oid" ] || [ "$commit_oid" = "null" ]; then
-          echo "❌ Failed to fetch commit SHA"
+          echo "❌ Failed to fetch commit SHA from GitHub API"
           exit 1
         fi
 
@@ -98,9 +103,10 @@ runs:
         echo "commit_oid=$commit_oid" >> $GITHUB_ENV
       shell: bash
 
-
     - name: Generate new branch
       if: env.changes == 'true' && github.event_name != 'pull_request'
+      env:
+        GITHUB_TOKEN: ${{ inputs.terraform_github_token || env.TERRAFORM_GITHUB_TOKEN || inputs.github_token }}
       run: |
         echo "===== Generate new branch ====="
         if [ -n "${{ inputs.remote_repository_path }}" ]; then
@@ -111,10 +117,8 @@ runs:
         branch_name="signed_commit_$date"
         git checkout -b $branch_name
 
-        # Select correct token
-        TOKEN="${{ inputs.terraform_github_token || inputs.github_token }}"
         if [ -n "${{ inputs.remote_repository }}" ]; then
-          git remote set-url origin "https://x-access-token:$TOKEN@github.com/${{ inputs.remote_repository }}.git"
+          git remote set-url origin "https://x-access-token:$GITHUB_TOKEN@github.com/${{ inputs.remote_repository }}.git"
         fi
 
         git push -u origin $branch_name
@@ -134,16 +138,22 @@ runs:
         if [ -n "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
         fi
+        # Initialize an empty JSON object for the additions
         files_for_commit='{"additions": []}'
 
+        # Read the changed files from changed_files.txt
         while IFS= read -r file; do
           if [[ -f "$file" ]]; then
+            # Base64 encode the contents of the file
             base64_content=$(base64 < "$file" | tr -d '\n')
+
+            # Construct a JSON object for this file and append it to the additions array
             files_for_commit=$(echo "$files_for_commit" | jq --arg path "$file" --arg content "$base64_content" \
               '.additions += [{ "path": $path, "contents": $content }]')
           fi
         done < changed_files.txt
 
+        # Output the final JSON array
         echo "$files_for_commit" > files_for_commit.json
       shell: bash
 
@@ -158,9 +168,10 @@ runs:
           github_repo="${{ github.repository }}"
         fi
 
-        TOKEN="${{ inputs.github_token }}"
-        if [ -z "$TOKEN" ] && [ -n "${{ inputs.terraform_github_token }}" ]; then
-          TOKEN="${{ inputs.terraform_github_token }}"
+        # Fallback for GITHUB_TOKEN if not set
+        GITHUB_TOKEN="${{ inputs.github_token }}"
+        if [ -z "$GITHUB_TOKEN" ]; then
+          GITHUB_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
         fi
 
         commit_message="Automated signed commit update"
@@ -179,14 +190,16 @@ runs:
                   repositoryNameWithOwner: $repository,
                   branchName: $branch_name
                 },
-                message: { headline: $commit_message },
+                message: {
+                  headline: $commit_message
+                },
                 fileChanges: $fileChanges[0],
                 expectedHeadOid: $commit_oid
               }
             }
           }' > mutation_payload.json
 
-        RESPONSE=$(curl -s -X POST -H "Authorization: bearer $TOKEN" \
+        RESPONSE=$(curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" \
           -H "Content-Type: application/json" \
           --data @mutation_payload.json https://api.github.com/graphql)
 
@@ -210,19 +223,20 @@ runs:
     - name: Create a PR if not running on a PR
       if: env.changes == 'true' && github.event_name != 'pull_request'
       run: |
-        echo "===== Create a PR ====="
+        echo "===== Create a PR if not running on a PR ====="
 
-        TOKEN="${{ inputs.github_token }}"
-        if [ -z "$TOKEN" ] && [ -n "${{ inputs.terraform_github_token }}" ]; then
-          TOKEN="${{ inputs.terraform_github_token }}"
+        # Fallback for GH_TOKEN
+        GH_TOKEN="${{ inputs.github_token }}"
+        if [ -z "$GH_TOKEN" ]; then
+          GH_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GH_TOKEN}}"
         fi
 
-        if [ -z "$TOKEN" ]; then
-          echo "❌ No valid GitHub token available."
+        if [ -z "$GH_TOKEN" ]; then
+          echo "GH_TOKEN is not set. Exiting..."
           exit 1
         fi
 
-        export GH_TOKEN="$TOKEN"
+        export GH_TOKEN
 
         repo_option=""
         if [ -n "${{ inputs.remote_repository }}" ]; then
