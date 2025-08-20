@@ -111,7 +111,7 @@ runs:
         if [ -n "${{ inputs.securityhub_slack_webhooks }}" ]; then
         securityhub_slack_webhooks_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.securityhub_slack_webhooks }}" | base64 --decode))
         echo "::add-mask::$securityhub_slack_webhooks_decrypt"
-        echo "SECURITYHUB_SLACK_WEBHOOKS=$securityhub_slack_webhooks_decrypt" >> $GITHUB_ENV
+        echo "SECURITYHUB_SLACK_WEBHOOKS=$(echo $securityhub_slack_webhooks_decrypt | jq -c .)" >> $GITHUB_ENV
         fi
 
         if [ -n "${{ inputs.testing_ci_iam_user_keys }}" ]; then
