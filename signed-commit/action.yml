@@ -123,6 +123,7 @@ runs:
         
         echo "✅ Commit OID resolved: $commit_oid"
         echo "commit_oid=$commit_oid" >> $GITHUB_ENV
+      shell: bash
 
     - name: Generate new branch
       if: env.changes == 'true' && github.event_name != 'pull_request'
