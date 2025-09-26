@@ -43,6 +43,9 @@ inputs:
   nuke_account_blocklist:
     description: "Encrypted Nuke Account Blocklist"
     required: false
+  mp_github_app_private_key:
+    description: "Encrypted MP Github App Private Key"
+    required: false
   PASSPHRASE:
     description: "Passphrase used for GPG decryption"
     required: true
@@ -136,4 +139,10 @@ runs:
         nuke_account_blocklist_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.nuke_account_blocklist }}" | base64 --decode))
         echo "::add-mask::$nuke_account_blocklist_decrypt"
         echo "NUKE_ACCOUNT_BLOCKLIST=$nuke_account_blocklist_decrypt" >> $GITHUB_ENV
+        fi
+
+        if [ -n "${{ inputs.mp_github_app_private_key }}" ]; then
+        mp_github_app_private_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.mp_github_app_private_key }}" | base64 --decode))
+        echo "::add-mask::$mp_github_app_private_key_decrypt"
+        echo "MP_GITHUB_APP_PRIVATE_KEY=$mp_github_app_private_key_decrypt" >> $GITHUB_ENV
         fi
