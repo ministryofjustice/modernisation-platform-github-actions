@@ -142,8 +142,11 @@ runs:
         fi
 
         if [ -n "${{ inputs.mp_github_app_private_key }}" ]; then
+        set +x
         mp_github_app_private_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.mp_github_app_private_key }}" | base64 --decode))
-        echo "::add-mask::$mp_github_app_private_key_decrypt"
+        while IFS= read -r line; do
+          [ -n "$line" ] && echo "::add-mask::$line"
+        done <<< "$mp_github_app_private_key_decrypt"
         {
           echo 'MP_GITHUB_APP_PRIVATE_KEY<<EOF'
           echo "$mp_github_app_private_key_decrypt"
