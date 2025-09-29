@@ -143,7 +143,6 @@ runs:
 
         if [ -n "${{ inputs.mp_github_app_private_key }}" ]; then
         mp_github_app_private_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.mp_github_app_private_key }}" | base64 --decode))
-        echo "$mp_github_app_private_key_decrypt" | head -n 1
         echo "::add-mask::$mp_github_app_private_key_decrypt"
         echo "MP_GITHUB_APP_PRIVATE_KEY=$mp_github_app_private_key_decrypt" >> $GITHUB_ENV
         fi
