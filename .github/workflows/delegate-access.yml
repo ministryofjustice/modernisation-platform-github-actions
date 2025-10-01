@@ -30,7 +30,7 @@ on:
             description: "The workspace"
 
     secrets:
-      
+
       PASSPHRASE:
         required: true
             
@@ -44,7 +44,7 @@ jobs:
           with:
             environment_management: ${{ inputs.environment_management }}
             slack_webhook_url: ${{ inputs.slack_webhook_url }}
-            PASSPHRASE: ${{ inputs.PASSPHRASE }}
+            PASSPHRASE: ${{ secrets.PASSPHRASE }}
         - name: Set Account Number
           run: |
             ACCOUNT_NUMBER=$(jq -r -e '.aws_organizations_root_account_id' <<< $ENVIRONMENT_MANAGEMENT)
