@@ -23,17 +23,16 @@ on:
             default: ""
             description: "Slack Webhook URL"
 
-        PASSPHRASE:
-            required: true
-            type: string
-            default: ""
-            description: "Passphrase"
-
         TF_WORKSPACE:
             required: true
             type: string
             default: ""
             description: "The workspace"
+
+    secrets:
+      
+      PASSPHRASE:
+        required: true
             
 jobs:
     delegate-access:
