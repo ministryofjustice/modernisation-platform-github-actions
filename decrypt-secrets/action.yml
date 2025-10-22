@@ -43,6 +43,9 @@ inputs:
   nuke_account_blocklist:
     description: "Encrypted Nuke Account Blocklist"
     required: false
+  mp_github_app_private_key:
+    description: "Encrypted MP Github App Private Key"
+    required: false
   PASSPHRASE:
     description: "Passphrase used for GPG decryption"
     required: true
@@ -108,6 +111,7 @@ runs:
         echo "GITHUB_CI_USER_ENVIRONMENTS_REPO_PAT=$github_ci_user_environments_repo_pat_decrypt" >> $GITHUB_ENV
         fi
 
+        # Note - use this method where the input is json
         if [ -n "${{ inputs.securityhub_slack_webhooks }}" ]; then
         set +x
         securityhub_slack_webhooks_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.securityhub_slack_webhooks }}" | base64 --decode))
@@ -144,3 +148,18 @@ runs:
         echo "::add-mask::$nuke_account_blocklist_decrypt"
         echo "NUKE_ACCOUNT_BLOCKLIST=$nuke_account_blocklist_decrypt" >> $GITHUB_ENV
         fi
+        
+        # Note - use this method where the input is plain text and not json
+        if [ -n "${{ inputs.mp_github_app_private_key }}" ]; then
+          set +x
+          mp_github_app_private_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.mp_github_app_private_key }}" | base64 --decode))
+          while IFS= read -r line; do
+            [ -n "$line" ] && echo "::add-mask::$line"
+          done <<< "$mp_github_app_private_key_decrypt"
+          {
+            echo 'MP_GITHUB_APP_PRIVATE_KEY<<EOF'
+            echo "$mp_github_app_private_key_decrypt"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+        fi
+        
