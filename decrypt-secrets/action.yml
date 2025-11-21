@@ -31,8 +31,16 @@ inputs:
   securityhub_slack_webhooks:
     description: "Stores Slack channel webhook URLs for sending Security Hub findings notifications"
     required: false
+  # ---- Old combined secret (keep for backward compatibility) ----
   testing_ci_iam_user_keys:
     description: "Encrypted Testing CI IAM User Keys"
+    required: false
+  # ---- New split secrets ----
+  testing_ci_iam_user_access_key_id:
+    description: "Encrypted Testing CI IAM User Access Key ID"
+    required: false
+  testing_ci_iam_user_secret_access_key:
+    description: "Encrypted Testing CI IAM User Secret Access Key"
     required: false
   nuke_account_ids:
     description: "Encrypted Nuke Account IDs"
@@ -125,10 +133,24 @@ runs:
         } >> "$GITHUB_ENV"
         fi
 
+        # ---- Old combined secret ----
         if [ -n "${{ inputs.testing_ci_iam_user_keys }}" ]; then
         testing_ci_iam_user_keys_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_ci_iam_user_keys }}" | base64 --decode))
         echo "::add-mask::$testing_ci_iam_user_keys_decrypt"
         echo "TESTING_CI_IAM_USER_KEYS=$testing_ci_iam_user_keys_decrypt" >> $GITHUB_ENV
+        fi
+
+        # ---- New split secrets ----
+        if [ -n "${{ inputs.testing_ci_iam_user_access_key_id }}" ]; then
+        testing_ci_iam_user_access_key_id_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_ci_iam_user_access_key_id }}" | base64 --decode))
+        echo "::add-mask::$testing_ci_iam_user_access_key_id_decrypt"
+        echo "TESTING_CI_IAM_USER_ACCESS_KEY_ID=$testing_ci_iam_user_access_key_id_decrypt" >> $GITHUB_ENV
+        fi
+
+        if [ -n "${{ inputs.testing_ci_iam_user_secret_access_key }}" ]; then
+        testing_ci_iam_user_secret_access_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_ci_iam_user_secret_access_key }}" | base64 --decode))
+        echo "::add-mask::$testing_ci_iam_user_secret_access_key_decrypt"
+        echo "TESTING_CI_IAM_USER_SECRET_ACCESS_KEY=$testing_ci_iam_user_secret_access_key_decrypt" >> $GITHUB_ENV
         fi
 
         if [ -n "${{ inputs.nuke_account_ids }}" ]; then
@@ -162,4 +184,3 @@ runs:
             echo 'EOF'
           } >> "$GITHUB_ENV"
         fi
-        
