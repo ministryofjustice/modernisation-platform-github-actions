@@ -142,15 +142,17 @@ runs:
 
         # ---- New split secrets ----
         if [ -n "${{ inputs.testing_ci_iam_user_access_key_id }}" ]; then
-        testing_ci_iam_user_access_key_id_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_ci_iam_user_access_key_id }}" | base64 --decode))
-        echo "::add-mask::$testing_ci_iam_user_access_key_id_decrypt"
-        echo "TESTING_CI_IAM_USER_ACCESS_KEY_ID=$testing_ci_iam_user_access_key_id_decrypt" >> $GITHUB_ENV
+          testing_ci_iam_user_access_key_id_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_ci_iam_user_access_key_id }}" | base64 --decode))
+          echo "::add-mask::$testing_ci_iam_user_access_key_id_decrypt"
+          echo "AWS_ACCESS_KEY_ID=$testing_ci_iam_user_access_key_id_decrypt" >> $GITHUB_ENV
+          echo "TESTING_CI_IAM_USER_ACCESS_KEY_ID=$testing_ci_iam_user_access_key_id_decrypt" >> $GITHUB_ENV
         fi
 
         if [ -n "${{ inputs.testing_ci_iam_user_secret_access_key }}" ]; then
-        testing_ci_iam_user_secret_access_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_ci_iam_user_secret_access_key }}" | base64 --decode))
-        echo "::add-mask::$testing_ci_iam_user_secret_access_key_decrypt"
-        echo "TESTING_CI_IAM_USER_SECRET_ACCESS_KEY=$testing_ci_iam_user_secret_access_key_decrypt" >> $GITHUB_ENV
+          testing_ci_iam_user_secret_access_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_ci_iam_user_secret_access_key }}" | base64 --decode))
+          echo "::add-mask::$testing_ci_iam_user_secret_access_key_decrypt"
+          echo "AWS_SECRET_ACCESS_KEY=$testing_ci_iam_user_secret_access_key_decrypt" >> $GITHUB_ENV
+          echo "TESTING_CI_IAM_USER_SECRET_ACCESS_KEY=$testing_ci_iam_user_secret_access_key_decrypt" >> $GITHUB_ENV
         fi
 
         if [ -n "${{ inputs.nuke_account_ids }}" ]; then
