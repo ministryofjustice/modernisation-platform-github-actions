@@ -67,7 +67,7 @@ These inputs let you fine-tune MegaLinter behaviour. All are optional with sensi
 | `disable_errors`                             | `true`                                                                      | If `true`, warnings do not fail the job                                                                                                                                              |
 | `email_reporter`                             | `false`                                                                     | If `true`, sends email reports                                                                                                                                                       |
 | `enable_linters`                             | `JSON_PRETTIER,YAML_PRETTIER,TERRAFORM_TERRAFORM_FMT,MARKDOWN_MARKDOWNLINT` | Comma-separated list of linters to enable                                                                                                                                            |
-| `ignore_files`                               | `""`                                                                        | Glob patterns of files to exclude                                                                                                                                                    |
+| `ignore_files`                               | `""`                                                                        | Regex pattern to exclude files from all linters (e.g., `(README\\.md)` or `(test/.*\\.js)`)                                                                                          |
 | `markdown_markdownlint_filter_regex_exclude` | `""`                                                                        | Regex pattern to exclude specific Markdown files                                                                                                                                     |
 | `report_output_folder`                       | `megalinter-reports`                                                        | Folder to output MegaLinter reports to                                                                                                                                               |
 | `validate_all_codebase`                      | _(dynamic)_                                                                 | If set, overrides default logic to determine whether to lint the full codebase. By default, the full codebase is only validated on `push` or `schedule` events to the `main` branch. |
@@ -103,7 +103,7 @@ Although the workflow is optimized for Terraform-based repositories by default, 
 ```yaml
 with:
   enable_linters: "TERRAFORM_TERRAFORM_FMT,YAML_PRETTIER"
-  ignore_files: ".terraform/*,README.md"
+  ignore_files: "(\\.terraform/|README\\.md)"
 ```
 
 ---

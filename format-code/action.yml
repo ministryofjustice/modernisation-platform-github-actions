@@ -74,7 +74,7 @@ runs:
         DISABLE_ERRORS: ${{ inputs.disable_errors }}
         EMAIL_REPORTER: ${{ inputs.email_reporter }}
         ENABLE_LINTERS: ${{ inputs.enable_linters }}
-        FILES_TO_EXCLUDE: ${{ inputs.ignore_files }}
+        FILTER_REGEX_EXCLUDE: ${{ inputs.ignore_files }}
         GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
         MARKDOWN_MARKDOWNLINT_FILTER_REGEX_EXCLUDE: ${{ inputs.markdown_markdownlint_filter_regex_exclude }}
         REPORT_OUTPUT_FOLDER: ${{ inputs.report_output_folder }}
