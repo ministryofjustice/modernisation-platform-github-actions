@@ -23,21 +23,21 @@ echo "INPUT_MAIN_BRANCH_NAME: $INPUT_MAIN_BRANCH_NAME"
 echo "INPUT_USE_TRIVY_ECR_DATABASE: $INPUT_USE_TRIVY_ECR_DATABASE"
 echo
 
-# install tfsec
+# install tfsec from GitHub (taken from README.md)
 if [[ -n "$INPUT_TFSEC_VERSION" && "${INPUT_TFSEC_TRIVY}" == "tfsec" ]]; then
   env GO111MODULE=on go install github.com/aquasecurity/tfsec/cmd/tfsec@"${INPUT_TFSEC_VERSION}"
 else
   env GO111MODULE=on go install github.com/aquasecurity/tfsec/cmd/tfsec@latest
 fi
 
-# install trivy
+# install trivy from github (taken from docs install guide)
 if [[ -n "$INPUT_TRIVY_VERSION" && "${INPUT_TFSEC_TRIVY}" == "trivy" ]]; then
   curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin "${INPUT_TRIVY_VERSION}"
 else
   curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin latest
 fi
 
-# use ECR for Trivy DB
+# use ECR for Trivy databases
 if [[ "$INPUT_USE_TRIVY_ECR_DATABASE" == "true" ]]; then
   export TRIVY_DB_REPOSITORY="public.ecr.aws/aquasecurity/trivy-db:2"
   export TRIVY_JAVA_DB_REPOSITORY="public.ecr.aws/aquasecurity/trivy-java-db:1"
@@ -54,16 +54,16 @@ declare -i checkov_exitcode=0
 declare -i tflint_exitcode=0
 declare -i trivy_exitcode=0
 
-# github runner safe workaround
+# see https://github.com/actions/runner/issues/2033
 git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-# changed folders
+# Identify which Terraform folders have changes and need scanning
 tf_folders_with_changes=$(git diff --name-only HEAD.."origin/${INPUT_MAIN_BRANCH_NAME}" | awk '{print $1}' | grep '\.tf' | sed 's#/[^/]*$##' | grep -v '\.tf' | uniq)
 echo
 echo "TF folders with changes"
 echo "$tf_folders_with_changes"
 
-# all folders
+# Get a list of all terraform folders in the repo
 all_tf_folders=$(find . -type f -name '*.tf' | sed 's#/[^/]*$##' | sed 's/.\///' | sort | uniq)
 echo
 echo "All TF folders"
