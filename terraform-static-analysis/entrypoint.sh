@@ -52,6 +52,7 @@ line_break() {
 declare -i tfsec_exitcode=0
 declare -i checkov_exitcode=0
 declare -i tflint_exitcode=0
+declare -i tfinit_exitcode=0
 declare -i trivy_exitcode=0
 
 # see https://github.com/actions/runner/issues/2033
@@ -73,7 +74,6 @@ run_trivy() {
   line_break
   echo "Trivy will check the following folders:"
   echo "$1"
-
   directories=($1)
   for directory in ${directories[@]}; do
     line_break
@@ -97,7 +97,6 @@ run_tfsec() {
   line_break
   echo "TFSEC will check the following folders:"
   echo "$1"
-
   directories=($1)
   for directory in ${directories[@]}; do
     line_break
@@ -126,7 +125,6 @@ run_checkov() {
   line_break
   echo "Checkov will check the following folders:"
   echo "$1"
-
   directories=($1)
   for directory in ${directories[@]}; do
     line_break
@@ -164,7 +162,6 @@ run_tflint() {
 
   echo "tflint checking:"
   echo "$1"
-
   directories=($1)
   for directory in ${directories[@]}; do
     line_break
@@ -296,21 +293,13 @@ if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
 
   # Delete old comment
   if [[ -n "$EXISTING_COMMENT_ID" && "$EXISTING_COMMENT_ID" != "null" ]]; then
-    curl -s -S \
-      -X DELETE \
-      -H "Authorization: token ${GITHUB_TOKEN}" \
-      "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/comments/${EXISTING_COMMENT_ID}" \
-      >/dev/null
+    curl -s -S -X DELETE -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/comments/${EXISTING_COMMENT_ID}" >/dev/null
   fi
 
   # Create fresh comment
   PAYLOAD_JSON=$(echo "${PAYLOAD_COMMENT}" | jq -R --slurp '{body: .}')
   echo "${PAYLOAD_JSON}" |
-    curl -s -S \
-      -H "Authorization: token ${GITHUB_TOKEN}" \
-      --header "Content-Type: application/json" \
-      --data @- \
-      "${COMMENTS_URL}" >/dev/null
+    curl -s -S -H "Authorization: token ${GITHUB_TOKEN}" --header "Content-Type: application/json" --data @- "${COMMENTS_URL}" >/dev/null
 fi
 
 ### EXIT CODE
@@ -320,7 +309,9 @@ echo "TFLint exit: $tflint_exitcode"
 echo "Trivy exit: $trivy_exitcode"
 
 if [ $tfsec_exitcode -gt 0 ] || [ $checkov_exitcode -gt 0 ] || [ $tflint_exitcode -gt 0 ] || [ $trivy_exitcode -gt 0 ]; then
+  echo "Exiting with error(s)"
   exit 1
 else
+  echo "Exiting with no error"
   exit 0
 fi
