@@ -81,13 +81,11 @@ run_trivy() {
     terraform_working_dir="${GITHUB_WORKSPACE}/${directory}"
 
     if [[ "${directory}" != *"templates"* && -d "${terraform_working_dir}" ]]; then
-      trivy fs --scanners vuln,misconfig,secret --exit-code 1 \
-        --no-progress --ignorefile "${INPUT_TRIVY_IGNORE}" \
-        --severity "${INPUT_TRIVY_SEVERITY}" \
-        "${terraform_working_dir}"
+      trivy fs --scanners vuln,misconfig,secret --exit-code 1 --no-progress --ignorefile "${INPUT_TRIVY_IGNORE}" --severity "${INPUT_TRIVY_SEVERITY}" "${terraform_working_dir}" 2>&1
       trivy_exitcode+=$?
+      echo "trivy_exitcode=${trivy_exitcode}"
     else
-      echo "Skipping folder ${directory}"
+      echo "Skipping folder ${directory} as it does not exist."
     fi
   done
   return $trivy_exitcode
@@ -105,17 +103,15 @@ run_tfsec() {
 
     if [[ "${directory}" != *"templates"* && -d "${terraform_working_dir}" ]]; then
       if [[ -n "$INPUT_TFSEC_EXCLUDE" ]]; then
-        /go/bin/tfsec "${terraform_working_dir}" --no-colour -e "${INPUT_TFSEC_EXCLUDE}" \
-          ${INPUT_TFSEC_OUTPUT_FORMAT:+ -f "$INPUT_TFSEC_OUTPUT_FORMAT"} \
-          ${INPUT_TFSEC_OUTPUT_FILE:+ --out "$INPUT_TFSEC_OUTPUT_FILE"}
+        echo "Excluding the following checks: ${INPUT_TFSEC_EXCLUDE}"
+        /go/bin/tfsec "${terraform_working_dir}" --no-colour -e "${INPUT_TFSEC_EXCLUDE}" ${INPUT_TFSEC_OUTPUT_FORMAT:+ -f "$INPUT_TFSEC_OUTPUT_FORMAT"} ${INPUT_TFSEC_OUTPUT_FILE:+ --out "$INPUT_TFSEC_OUTPUT_FILE"} 2>&1
       else
-        /go/bin/tfsec "${terraform_working_dir}" --no-colour \
-          ${INPUT_TFSEC_OUTPUT_FORMAT:+ -f "$INPUT_TFSEC_OUTPUT_FORMAT"} \
-          ${INPUT_TFSEC_OUTPUT_FILE:+ --out "$INPUT_TFSEC_OUTPUT_FILE"}
+        /go/bin/tfsec "${terraform_working_dir}" --no-colour ${INPUT_TFSEC_OUTPUT_FORMAT:+ -f "$INPUT_TFSEC_OUTPUT_FORMAT"} ${INPUT_TFSEC_OUTPUT_FILE:+ --out "$INPUT_TFSEC_OUTPUT_FILE"} 2>&1
       fi
       tfsec_exitcode+=$?
+      echo "tfsec_exitcode=${tfsec_exitcode}"
     else
-      echo "Skipping folder ${directory}"
+      echo "Skipping folder ${directory} as it does not exist."
     fi
   done
   return $tfsec_exitcode
@@ -133,13 +129,12 @@ run_checkov() {
 
     if [[ "${directory}" != *"templates"* && -d "${terraform_working_dir}" ]]; then
       if [[ -n "$INPUT_CHECKOV_EXCLUDE" ]]; then
-        checkov --quiet -d "$terraform_working_dir" --skip-check "${INPUT_CHECKOV_EXCLUDE}" \
-          --download-external-modules "${INPUT_CHECKOV_EXTERNAL_MODULES}"
+        checkov --quiet -d "$terraform_working_dir" --skip-check "${INPUT_CHECKOV_EXCLUDE}" --download-external-modules "${INPUT_CHECKOV_EXTERNAL_MODULES}" 2>&1
       else
-        checkov --quiet -d "$terraform_working_dir" \
-          --download-external-modules "${INPUT_CHECKOV_EXTERNAL_MODULES}"
+        checkov --quiet -d "$terraform_working_dir" --download-external-modules "${INPUT_CHECKOV_EXTERNAL_MODULES}" 2>&1
       fi
       checkov_exitcode+=$?
+      echo "checkov_exitcode=${checkov_exitcode}"
     else
       echo "Skipping folder ${directory}"
     fi
@@ -172,19 +167,15 @@ run_tflint() {
       if [[ -n "$INPUT_TFLINT_EXCLUDE" ]]; then
         readarray -d , -t tflint_exclusions <<<"$INPUT_TFLINT_EXCLUDE"
         tflint_exclusions_list=("${tflint_exclusions[@]/#/--disable-rule=}")
-        tflint --config "$tflint_config" \
-          ${tflint_exclusions_list[@]} \
-          --chdir "${terraform_working_dir}" \
-          --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}"
+        tflint --config "$tflint_config" ${tflint_exclusions_list[@]} --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
       else
-        tflint --config "$tflint_config" \
-          --chdir "${terraform_working_dir}" \
-          --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}"
+        tflint --config "$tflint_config" --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
       fi
     else
       echo "Skipping folder ${directory}"
     fi
     tflint_exitcode+=$?
+    echo "tflint_exitcode=${tflint_exitcode}"
   done
   return $tflint_exitcode
 }
