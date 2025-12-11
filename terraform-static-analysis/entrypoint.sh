@@ -79,16 +79,13 @@ run_trivy() {
     line_break
     echo "Running Trivy in ${directory}"
     terraform_working_dir="${GITHUB_WORKSPACE}/${directory}"
-    if [[ "${directory}" != *"templates"* ]]; then
-      if [ -d "${terraform_working_dir}" ]; then
-        trivy fs --scanners vuln,misconfig,secret --exit-code 1 --no-progress --ignorefile "${INPUT_TRIVY_IGNORE}" --severity "${INPUT_TRIVY_SEVERITY}" "${terraform_working_dir}" 2>&1
-        trivy_exitcode+=$?
-        echo "trivy_exitcode=${trivy_exitcode}"
-      else
-        echo "Skipping folder ${directory} as it does not exist."
-      fi
+
+    if [[ "${directory}" != *"templates"* && -d "${terraform_working_dir}" ]]; then
+      trivy fs --scanners vuln,misconfig,secret --exit-code 1 --no-progress --ignorefile "${INPUT_TRIVY_IGNORE}" --severity "${INPUT_TRIVY_SEVERITY}" "${terraform_working_dir}" 2>&1
+      trivy_exitcode+=$?
+      echo "trivy_exitcode=${trivy_exitcode}"
     else
-      echo "Skipping folder as path name contains *templates*"
+      echo "Skipping folder ${directory} as it does not exist."
     fi
   done
   return $trivy_exitcode
@@ -103,21 +100,18 @@ run_tfsec() {
     line_break
     echo "Running TFSEC in ${directory}"
     terraform_working_dir="${GITHUB_WORKSPACE}/${directory}"
-    if [[ "${directory}" != *"templates"* ]]; then
-      if [ -d "${terraform_working_dir}" ]; then
-        if [[ -n "$INPUT_TFSEC_EXCLUDE" ]]; then
-          echo "Excluding the following checks: ${INPUT_TFSEC_EXCLUDE}"
-          /go/bin/tfsec "${terraform_working_dir}" --no-colour -e "${INPUT_TFSEC_EXCLUDE}" ${INPUT_TFSEC_OUTPUT_FORMAT:+ -f "$INPUT_TFSEC_OUTPUT_FORMAT"} ${INPUT_TFSEC_OUTPUT_FILE:+ --out "$INPUT_TFSEC_OUTPUT_FILE"} 2>&1
-        else
-          /go/bin/tfsec "${terraform_working_dir}" --no-colour ${INPUT_TFSEC_OUTPUT_FORMAT:+ -f "$INPUT_TFSEC_OUTPUT_FORMAT"} ${INPUT_TFSEC_OUTPUT_FILE:+ --out "$INPUT_TFSEC_OUTPUT_FILE"} 2>&1
-        fi
-        tfsec_exitcode+=$?
-        echo "tfsec_exitcode=${tfsec_exitcode}"
+
+    if [[ "${directory}" != *"templates"* && -d "${terraform_working_dir}" ]]; then
+      if [[ -n "$INPUT_TFSEC_EXCLUDE" ]]; then
+        echo "Excluding the following checks: ${INPUT_TFSEC_EXCLUDE}"
+        /go/bin/tfsec "${terraform_working_dir}" --no-colour -e "${INPUT_TFSEC_EXCLUDE}" ${INPUT_TFSEC_OUTPUT_FORMAT:+ -f "$INPUT_TFSEC_OUTPUT_FORMAT"} ${INPUT_TFSEC_OUTPUT_FILE:+ --out "$INPUT_TFSEC_OUTPUT_FILE"} 2>&1
       else
-        echo "Skipping folder ${directory} as it does not exist."
+        /go/bin/tfsec "${terraform_working_dir}" --no-colour ${INPUT_TFSEC_OUTPUT_FORMAT:+ -f "$INPUT_TFSEC_OUTPUT_FORMAT"} ${INPUT_TFSEC_OUTPUT_FILE:+ --out "$INPUT_TFSEC_OUTPUT_FILE"} 2>&1
       fi
+      tfsec_exitcode+=$?
+      echo "tfsec_exitcode=${tfsec_exitcode}"
     else
-      echo "Skipping folder as path name contains *templates*"
+      echo "Skipping folder ${directory} as it does not exist."
     fi
   done
   return $tfsec_exitcode
@@ -132,21 +126,17 @@ run_checkov() {
     line_break
     echo "Running Checkov in ${directory}"
     terraform_working_dir="${GITHUB_WORKSPACE}/${directory}"
-    if [[ "${directory}" != *"templates"* ]]; then
-      if [ -d "${terraform_working_dir}" ]; then
-        if [[ -n "$INPUT_CHECKOV_EXCLUDE" ]]; then
-          echo "Excluding the following checks: ${INPUT_CHECKOV_EXCLUDE}"
-          checkov --quiet -d "$terraform_working_dir" --skip-check "${INPUT_CHECKOV_EXCLUDE}" --download-external-modules "${INPUT_CHECKOV_EXTERNAL_MODULES}" 2>&1
-        else
-          checkov --quiet -d "$terraform_working_dir" --download-external-modules "${INPUT_CHECKOV_EXTERNAL_MODULES}" 2>&1
-        fi
-        checkov_exitcode+=$?
-        echo "checkov_exitcode=${checkov_exitcode}"
+
+    if [[ "${directory}" != *"templates"* && -d "${terraform_working_dir}" ]]; then
+      if [[ -n "$INPUT_CHECKOV_EXCLUDE" ]]; then
+        checkov --quiet -d "$terraform_working_dir" --skip-check "${INPUT_CHECKOV_EXCLUDE}" --download-external-modules "${INPUT_CHECKOV_EXTERNAL_MODULES}" 2>&1
       else
-        echo "Skipping folder ${directory} as it does not exist."
+        checkov --quiet -d "$terraform_working_dir" --download-external-modules "${INPUT_CHECKOV_EXTERNAL_MODULES}" 2>&1
       fi
+      checkov_exitcode+=$?
+      echo "checkov_exitcode=${checkov_exitcode}"
     else
-      echo "Skipping folder as path name contains *templates*"
+      echo "Skipping folder ${directory}"
     fi
   done
   return $checkov_exitcode
@@ -154,37 +144,35 @@ run_checkov() {
 
 run_tflint() {
   line_break
+
   if [[ -n $INPUT_TFLINT_CONFIG ]]; then
-    echo "Setting custom (${INPUT_TFLINT_CONFIG}) tflint config..."
+    echo "Setting custom config ${INPUT_TFLINT_CONFIG}"
     tflint_config="/tflint-configs/${INPUT_TFLINT_CONFIG}"
   else
-    echo "Setting default tflint config..."
+    echo "Using default config"
     tflint_config="/tflint-configs/tflint.default.hcl"
   fi
-  echo "Running tflint --init..."
+
   tflint --init --config "$tflint_config"
-  echo "tflint will check the following folders:"
+
+  echo "tflint checking:"
   echo "$1"
   directories=($1)
   for directory in ${directories[@]}; do
     line_break
     echo "Running tflint in ${directory}"
     terraform_working_dir="${GITHUB_WORKSPACE}/${directory}"
-    if [[ "${directory}" != *"templates"* ]]; then
-      if [ -d "${terraform_working_dir}" ]; then
-        if [[ -n "$INPUT_TFLINT_EXCLUDE" ]]; then
-          echo "Excluding the following checks: ${INPUT_TFLINT_EXCLUDE}"
-          readarray -d , -t tflint_exclusions <<<"$INPUT_TFLINT_EXCLUDE"
-          tflint_exclusions_list=("${tflint_exclusions[@]/#/--disable-rule=}")
-          tflint --config "$tflint_config" ${tflint_exclusions_list[@]} --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
-        else
-          tflint --config "$tflint_config" --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
-        fi
+
+    if [[ "${directory}" != *"templates"* && -d "${terraform_working_dir}" ]]; then
+      if [[ -n "$INPUT_TFLINT_EXCLUDE" ]]; then
+        readarray -d , -t tflint_exclusions <<<"$INPUT_TFLINT_EXCLUDE"
+        tflint_exclusions_list=("${tflint_exclusions[@]/#/--disable-rule=}")
+        tflint --config "$tflint_config" ${tflint_exclusions_list[@]} --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
       else
-        echo "Skipping folder ${directory} as it does not exist."
+        tflint --config "$tflint_config" --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
       fi
     else
-      echo "Skipping folder as path name contains *templates*"
+      echo "Skipping folder ${directory}"
     fi
     tflint_exitcode+=$?
     echo "tflint_exitcode=${tflint_exitcode}"
@@ -192,177 +180,124 @@ run_tflint() {
   return $tflint_exitcode
 }
 
+### SCAN TYPE
 case ${INPUT_SCAN_TYPE} in
-
 full)
-  line_break
-  echo "Starting full scan"
-  if [[ "${INPUT_TFSEC_TRIVY}" == "tfsec" ]]; then
-    TFSEC_OUTPUT=$(run_tfsec "${all_tf_folders}")
-    tfsec_exitcode=$?
-    wait
-  fi
-  if [[ "${INPUT_TFSEC_TRIVY}" == "trivy" ]]; then
-    TRIVY_OUTPUT=$(run_trivy "${all_tf_folders}")
-    trivy_exitcode=$?
-    wait
-  fi
+  [[ "${INPUT_TFSEC_TRIVY}" == "tfsec" ]] && TFSEC_OUTPUT=$(run_tfsec "${all_tf_folders}")
+  [[ "${INPUT_TFSEC_TRIVY}" == "trivy" ]] && TRIVY_OUTPUT=$(run_trivy "${all_tf_folders}")
   CHECKOV_OUTPUT=$(run_checkov "${all_tf_folders}")
-  checkov_exitcode=$?
-  wait
   TFLINT_OUTPUT=$(run_tflint "${all_tf_folders}")
-  tflint_exitcode=$?
-  wait
   ;;
-
 changed)
-  line_break
-  echo "Starting scan of changed folders"
-  if [[ "${INPUT_TFSEC_TRIVY}" == "tfsec" ]]; then
-    TFSEC_OUTPUT=$(run_tfsec "${tf_folders_with_changes}")
-    tfsec_exitcode=$?
-    wait
-  fi
-  if [[ "${INPUT_TFSEC_TRIVY}" == "trivy" ]]; then
-    TRIVY_OUTPUT=$(run_trivy "${tf_folders_with_changes}")
-    trivy_exitcode=$?
-    wait
-  fi
+  [[ "${INPUT_TFSEC_TRIVY}" == "tfsec" ]] && TFSEC_OUTPUT=$(run_tfsec "${tf_folders_with_changes}")
+  [[ "${INPUT_TFSEC_TRIVY}" == "trivy" ]] && TRIVY_OUTPUT=$(run_trivy "${tf_folders_with_changes}")
   CHECKOV_OUTPUT=$(run_checkov "${tf_folders_with_changes}")
-  checkov_exitcode=$?
-  wait
   TFLINT_OUTPUT=$(run_tflint "${tf_folders_with_changes}")
-  tflint_exitcode=$?
-  wait
   ;;
 *)
-  line_break
-  echo "Starting single folder scan"
-  if [[ "${INPUT_TFSEC_TRIVY}" == "tfsec" ]]; then
-    TFSEC_OUTPUT=$(run_tfsec "${INPUT_TERRAFORM_WORKING_DIR}")
-    tfsec_exitcode=$?
-    wait
-  fi
-  if [[ "${INPUT_TFSEC_TRIVY}" == "trivy" ]]; then
-    TRIVY_OUTPUT=$(run_trivy "${INPUT_TERRAFORM_WORKING_DIR}")
-    trivy_exitcode=$?
-    wait
-  fi
+  [[ "${INPUT_TFSEC_TRIVY}" == "tfsec" ]] && TFSEC_OUTPUT=$(run_tfsec "${INPUT_TERRAFORM_WORKING_DIR}")
+  [[ "${INPUT_TFSEC_TRIVY}" == "trivy" ]] && TRIVY_OUTPUT=$(run_trivy "${INPUT_TERRAFORM_WORKING_DIR}")
   CHECKOV_OUTPUT=$(run_checkov "${INPUT_TERRAFORM_WORKING_DIR}")
-  checkov_exitcode=$?
-  wait
   TFLINT_OUTPUT=$(run_tflint "${INPUT_TERRAFORM_WORKING_DIR}")
-  tflint_exitcode=$?
-  wait
   ;;
 esac
 
+### DETERMINE STATUSES
+[[ "${INPUT_TFSEC_TRIVY}" == "tfsec" ]] && TFSEC_STATUS=$([[ $tfsec_exitcode -eq 0 ]] && echo "Success" || echo "Failed")
+[[ "${INPUT_TFSEC_TRIVY}" == "trivy" ]] && TRIVY_STATUS=$([[ $trivy_exitcode -eq 0 ]] && echo "Success" || echo "Failed")
+
+CHECKOV_STATUS=$([[ $checkov_exitcode -eq 0 ]] && echo "Success" || echo "Failed")
+TFLINT_STATUS=$([[ $tflint_exitcode -eq 0 ]] && echo "Success" || echo "Failed")
+
+### OUTPUT CLEANUP FUNCTION
+clean_output() {
+  echo "$1" \
+    | sed 's/\x1b\[[0-9;]*m//g' \
+    | sed 's/[[:blank:]]*$//' \
+    | sed 's/\r//'
+}
+
+TFSEC_CLEAN=$(clean_output "${TFSEC_OUTPUT}")
+TRIVY_CLEAN=$(clean_output "${TRIVY_OUTPUT}")
+CHECKOV_CLEAN=$(clean_output "${CHECKOV_OUTPUT}")
+TFLINT_CLEAN=$(clean_output "${TFLINT_OUTPUT}")
+
+### PR COMMENT HEADER MARKER
+COMMENT_HEADER="<!-- terraform-static-analysis-comment -->"
+
+### BUILD COMMENT BLOCK
 if [[ "${INPUT_TFSEC_TRIVY}" == "tfsec" ]]; then
-  if [ $tfsec_exitcode -eq 0 ]; then
-    TFSEC_STATUS="Success"
-  else
-    TFSEC_STATUS="Failed"
-  fi
-fi
-if [[ "${INPUT_TFSEC_TRIVY}" == "trivy" ]]; then
-  if [ $trivy_exitcode -eq 0 ]; then
-    TRIVY_STATUS="Success"
-  else
-    TRIVY_STATUS="Failed"
-  fi
-fi
-
-if [ $checkov_exitcode -eq 0 ]; then
-  CHECKOV_STATUS="Success"
-else
-  CHECKOV_STATUS="Failed"
-fi
-
-if [ $tflint_exitcode -eq 0 ]; then
-  TFLINT_STATUS="Success"
-else
-  TFLINT_STATUS="Failed"
-fi
-
-# Print output.
-line_break
-if [[ "${INPUT_TFSEC_TRIVY}" == "tfsec" ]]; then
-  echo "${TFSEC_OUTPUT}"
-fi
-if [[ "${INPUT_TFSEC_TRIVY}" == "trivy" ]]; then
-  echo "${TRIVY_OUTPUT}"
-fi
-echo "${CHECKOV_OUTPUT}"
-echo "${TFLINT_OUTPUT}"
-
-# Comment on the pull request if necessary.
-if [ "${INPUT_COMMENT_ON_PR}" == "1" ] || [ "${INPUT_COMMENT_ON_PR}" == "true" ]; then
-  COMMENT=1
-else
-  COMMENT=0
-fi
-
-if [ "${GITHUB_EVENT_NAME}" == "pull_request" ] && [ -n "${GITHUB_TOKEN}" ] && [ "${COMMENT}" == "1" ]; then
-  if [[ "${INPUT_TFSEC_TRIVY}" == "tfsec" ]]; then
-    INPUT_TFSEC_TRIVY_COMMENT="#### \`TFSEC Scan\` ${TFSEC_STATUS}
+  TOOL_BLOCK="#### \`TFSEC Scan\` ${TFSEC_STATUS}
 <details><summary>Show Output</summary>
+
 \`\`\`hcl
-${TFSEC_OUTPUT}
+${TFSEC_CLEAN}
 \`\`\`
+
 </details>"
-  fi
-  if [[ "${INPUT_TFSEC_TRIVY}" == "trivy" ]]; then
-    INPUT_TFSEC_TRIVY_COMMENT="#### \`Trivy Scan\` ${TRIVY_STATUS}
+else
+  TOOL_BLOCK="#### \`Trivy Scan\` ${TRIVY_STATUS}
 <details><summary>Show Output</summary>
+
 \`\`\`hcl
-${TRIVY_OUTPUT}
+${TRIVY_CLEAN}
 \`\`\`
-</details>"
-  fi
 
-  COMMENT="#### \`Checkov Scan\` ${CHECKOV_STATUS}
+</details>"
+fi
+
+PAYLOAD_COMMENT="${COMMENT_HEADER}
+
+${TOOL_BLOCK}
+
+---
+
+#### \`Checkov Scan\` ${CHECKOV_STATUS}
 <details><summary>Show Output</summary>
 
 \`\`\`hcl
-${CHECKOV_OUTPUT}
+${CHECKOV_CLEAN}
 \`\`\`
 
 </details>
 
-#### \`CTFLint Scan\` ${TFLINT_STATUS}
+---
+
+#### \`TFLint Scan\` ${TFLINT_STATUS}
 <details><summary>Show Output</summary>
 
 \`\`\`hcl
-${TFLINT_OUTPUT}
+${TFLINT_CLEAN}
 \`\`\`
 
-</details>
-
-#### \`Trivy Scan\` ${TRIVY_STATUS}
-<details><summary>Show Output</summary>
-
-\`\`\`hcl
-${TRIVY_OUTPUT}
-\`\`\`
 </details>
 "
 
-  PAYLOAD_COMMENT="${INPUT_TFSEC_TRIVY_COMMENT} ${COMMENT}"
+### POST COMMENT TO PR
+if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
 
-  PAYLOAD=$(echo "${PAYLOAD_COMMENT}" | jq -R --slurp '{body: .}')
-  URL=$(jq -r .pull_request.comments_url "${GITHUB_EVENT_PATH}")
-  echo "${PAYLOAD}" | curl -s -S -H "Authorization: token ${GITHUB_TOKEN}" --header "Content-Type: application/json" --data @- "${URL}" >/dev/null
+  COMMENTS_URL=$(jq -r .pull_request.comments_url "${GITHUB_EVENT_PATH}")
+  EXISTING_COMMENTS=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" "$COMMENTS_URL")
+
+  EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r \
+    ".[] | select(.body | contains(\"${COMMENT_HEADER}\")) | .id")
+
+  # Delete old comment
+  if [[ -n "$EXISTING_COMMENT_ID" && "$EXISTING_COMMENT_ID" != "null" ]]; then
+    curl -s -S -X DELETE -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/comments/${EXISTING_COMMENT_ID}" >/dev/null
+  fi
+
+  # Create fresh comment
+  PAYLOAD_JSON=$(echo "${PAYLOAD_COMMENT}" | jq -R --slurp '{body: .}')
+  echo "${PAYLOAD_JSON}" |
+    curl -s -S -H "Authorization: token ${GITHUB_TOKEN}" --header "Content-Type: application/json" --data @- "${COMMENTS_URL}" >/dev/null
 fi
 
-line_break
-if [[ "${INPUT_TFSEC_TRIVY}" == "tfsec" ]]; then
-  echo "Total of TFSEC exit codes: $tfsec_exitcode"
-fi
-if [[ "${INPUT_TFSEC_TRIVY}" == "trivy" ]]; then
-  echo "Total of trivy exit codes: $trivy_exitcode"
-fi
-echo "Total of Checkov exit codes: $checkov_exitcode"
-echo "Total of tflint exit codes: $tflint_exitcode"
+### EXIT CODE
+echo "TFSEC exit: $tfsec_exitcode"
+echo "Checkov exit: $checkov_exitcode"
+echo "TFLint exit: $tflint_exitcode"
+echo "Trivy exit: $trivy_exitcode"
 
 if [ $tfsec_exitcode -gt 0 ] || [ $checkov_exitcode -gt 0 ] || [ $tflint_exitcode -gt 0 ] || [ $trivy_exitcode -gt 0 ]; then
   echo "Exiting with error(s)"
