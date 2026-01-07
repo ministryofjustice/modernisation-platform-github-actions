@@ -1,9 +1,6 @@
 name: "Decrypt Secrets"
 description: "Decrypts secrets that are base64 encoded and encrypted with GPG"
 inputs:
-  modernisation_pat_multirepo:
-    description: "Encrypted Multirepo PAT Token"
-    required: false
   gov_uk_notify_api_key:
     description: "Encrypted notification API Key"
     required: false
@@ -24,6 +21,9 @@ inputs:
     required: false
   terraform_github_token:
     description: "Encrypted GitHub CI user Personal Access Token"
+    required: false
+  github_ci_user_environments_repo_pat:
+    description: "Encrypted GitHub CI user environments repo Personal Access Token"
     required: false
   securityhub_slack_webhooks:
     description: "Stores Slack channel webhook URLs for sending Security Hub findings notifications"
@@ -61,12 +61,6 @@ runs:
   - name: Decrypt Secrets
     shell: bash
     run: |
-      if [ -n "${{ inputs.modernisation_pat_multirepo }}" ]; then
-      modernisation_pat_multirepo_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.modernisation_pat_multirepo }}" | base64 --decode))
-      echo "::add-mask::$modernisation_pat_multirepo_decrypt"
-      echo "MODERNISATION_PAT_MULTIREPO=$modernisation_pat_multirepo_decrypt" >> $GITHUB_ENV
-      fi
-
       if [ -n "${{ inputs.gov_uk_notify_api_key }}" ]; then
       gov_uk_notify_api_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.gov_uk_notify_api_key }}" | base64 --decode))
       echo "::add-mask::$gov_uk_notify_api_key_decrypt"
@@ -108,6 +102,12 @@ runs:
       terraform_github_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.terraform_github_token }}" | base64 --decode))
       echo "::add-mask::$terraform_github_token_decrypt"
       echo "TERRAFORM_GITHUB_TOKEN=$terraform_github_token_decrypt" >> $GITHUB_ENV
+      fi
+
+      if [ -n "${{ inputs.github_ci_user_environments_repo_pat }}" ]; then
+      github_ci_user_environments_repo_pat_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.github_ci_user_environments_repo_pat }}" | base64 --decode))
+      echo "::add-mask::$github_ci_user_environments_repo_pat_decrypt"
+      echo "GITHUB_CI_USER_ENVIRONMENTS_REPO_PAT=$github_ci_user_environments_repo_pat_decrypt" >> $GITHUB_ENV
       fi
 
       # Note - use this method where the input is json
