@@ -21,7 +21,7 @@ This action is designed to decrypt secrets that are encrypted with GPG and base6
   - `slack_webhook_url`
   - `terraform_github_token`
   
-  These inputs should be the base64-encoded, GPG-encrypted secrets that you want to decrypt. 
+  These inputs should be the base64-encoded, GPG-encrypted secrets that you want to decrypt.
 
 ### Outputs
 
