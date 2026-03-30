@@ -66,7 +66,7 @@ runs:
         fetch-depth: 0
 
     - name: Run MegaLinter
-      uses: oxsecurity/megalinter/flavors/terraform@v8.8.0
+      uses: oxsecurity/megalinter/flavors/terraform@e08c2b05e3dbc40af4c23f41172ef1e068a7d651 # v8.8.0
       env:
         APPLY_FIXES: ${{ inputs.apply_fixes }}
         APPLY_FIXES_EVENT: ${{ inputs.apply_fixes_event }}
