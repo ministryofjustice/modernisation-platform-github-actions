@@ -61,12 +61,12 @@ runs:
   using: "composite"
   steps:
     - name: Checkout Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         fetch-depth: 0
 
     - name: Run MegaLinter
-      uses: oxsecurity/megalinter/flavors/terraform@v8.8.0
+      uses: oxsecurity/megalinter/flavors/terraform@e08c2b05e3dbc40af4c23f41172ef1e068a7d651 # v8.8.0
       env:
         APPLY_FIXES: ${{ inputs.apply_fixes }}
         APPLY_FIXES_EVENT: ${{ inputs.apply_fixes_event }}
@@ -84,7 +84,7 @@ runs:
 
     - name: Archive MegaLinter Reports
       if: success() || failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: MegaLinter reports
         path: |
@@ -103,6 +103,6 @@ runs:
 
     - name: Upload SARIF to GitHub Security tab
       if: steps.check_sarif.outputs.exists == 'true'
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
       with:
         sarif_file: megalinter-reports/megalinter-report.sarif
