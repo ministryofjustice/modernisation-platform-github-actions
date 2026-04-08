@@ -21,7 +21,7 @@ This action is designed to decrypt secrets that are encrypted with GPG and base6
   - `slack_webhook_url`
   - `terraform_github_token`
   
-  These inputs should be the base64-encoded, GPG-encrypted secrets that you want to decrypt. 
+  These inputs should be the base64-encoded, GPG-encrypted secrets that you want to decrypt.
 
 ### Outputs
 
@@ -38,3 +38,5 @@ The action will decrypt the provided inputs (if any) and make them available as 
 
 - The input names (e.g., `environment_management`, `pagerduty_token`, etc.) depend on the secrets you are retrieving and encrypting. They may change if additional secrets are retrieved or removed from your `AWS Secrets Manager` configuration. You should update the workflow to reflect any changes in the retrieved secrets.
 - The `decrypt-secrets` action should be used after the secrets are retrieved and encrypted by the `retrieve-secrets` job.
+- The action applies multiline-safe masking by default. For plain-text secrets it masks the full value, an escaped full value, and each non-empty line. For JSON secrets it masks the raw JSON and all string leaf values.
+- When a decrypted value contains newlines, the action writes it to `$GITHUB_ENV` using heredoc multiline syntax to avoid truncation or accidental log exposure.

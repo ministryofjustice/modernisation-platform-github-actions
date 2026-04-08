@@ -61,119 +61,152 @@ runs:
   - name: Decrypt Secrets
     shell: bash
     run: |
+      mask_plain_secret() {
+        local value="$1"
+        [ -z "$value" ] && return
+
+        echo "::add-mask::$value"
+
+        local escaped="$value"
+        escaped="${escaped//%/%25}"
+        escaped="${escaped//$'\r'/%0D}"
+        escaped="${escaped//$'\n'/%0A}"
+        echo "::add-mask::$escaped"
+
+        while IFS= read -r line; do
+          [ -n "$line" ] && echo "::add-mask::$line"
+        done <<< "$value"
+      }
+
+      mask_json_secret() {
+        local value="$1"
+        [ -z "$value" ] && return
+
+        mask_plain_secret "$value"
+
+        while IFS= read -r string_leaf; do
+          [ -n "$string_leaf" ] && mask_plain_secret "$string_leaf"
+        done < <(printf '%s' "$value" | jq -r '.. | strings')
+      }
+
+      write_env_var() {
+        local key="$1"
+        local value="$2"
+
+        if [[ "$value" == *$'\n'* ]]; then
+          local delimiter="EOF_$(date +%s%N)_$RANDOM"
+          {
+            echo "${key}<<${delimiter}"
+            echo "$value"
+            echo "${delimiter}"
+          } >> "$GITHUB_ENV"
+        else
+          echo "${key}=${value}" >> "$GITHUB_ENV"
+        fi
+      }
+
       if [ -n "${{ inputs.gov_uk_notify_api_key }}" ]; then
       gov_uk_notify_api_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.gov_uk_notify_api_key }}" | base64 --decode))
-      echo "::add-mask::$gov_uk_notify_api_key_decrypt"
-      echo "GOV_UK_NOTIFY_API_KEY=$gov_uk_notify_api_key_decrypt" >> $GITHUB_ENV
+      mask_plain_secret "$gov_uk_notify_api_key_decrypt"
+      write_env_var "GOV_UK_NOTIFY_API_KEY" "$gov_uk_notify_api_key_decrypt"
       fi
 
       if [ -n "${{ inputs.environment_management }}" ]; then
       environment_management_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.environment_management }}" | base64 --decode))
-      echo "::add-mask::$environment_management_decrypt"
-      echo "ENVIRONMENT_MANAGEMENT=$environment_management_decrypt" >> $GITHUB_ENV
+      mask_plain_secret "$environment_management_decrypt"
+      write_env_var "ENVIRONMENT_MANAGEMENT" "$environment_management_decrypt"
       fi
 
       if [ -n "${{ inputs.pagerduty_token }}" ]; then
       pagerduty_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.pagerduty_token }}" | base64 --decode))
-      echo "::add-mask::$pagerduty_token_decrypt"
-      echo "PAGERDUTY_TOKEN=$pagerduty_token_decrypt" >> $GITHUB_ENV
+      mask_plain_secret "$pagerduty_token_decrypt"
+      write_env_var "PAGERDUTY_TOKEN" "$pagerduty_token_decrypt"
       fi
 
       if [ -n "${{ inputs.pagerduty_userapi_token }}" ]; then
       pagerduty_userapi_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.pagerduty_userapi_token }}" | base64 --decode))
-      echo "::add-mask::$pagerduty_userapi_token_decrypt"
-      echo "PAGERDUTY_USERAPI_TOKEN=$pagerduty_userapi_token_decrypt" >> $GITHUB_ENV
+      mask_plain_secret "$pagerduty_userapi_token_decrypt"
+      write_env_var "PAGERDUTY_USERAPI_TOKEN" "$pagerduty_userapi_token_decrypt"
       fi
 
       if [ -n "${{ inputs.slack_webhooks }}" ]; then
       slack_webhooks_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.slack_webhooks }}" | base64 --decode))
       slack_webhooks_escaped=$(echo "$slack_webhooks_decrypt" | jq -c .)
-      echo "::add-mask::$slack_webhooks_escaped"
-      echo "SLACK_WEBHOOKS=$slack_webhooks_escaped" >> $GITHUB_ENV
+      mask_json_secret "$slack_webhooks_decrypt"
+      mask_plain_secret "$slack_webhooks_escaped"
+      write_env_var "SLACK_WEBHOOKS" "$slack_webhooks_escaped"
       fi
 
       if [ -n "${{ inputs.slack_webhook_url }}" ]; then
       slack_webhook_url_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.slack_webhook_url }}" | base64 --decode))
-      echo "::add-mask::$slack_webhook_url_decrypt"
-      echo "SLACK_WEBHOOK_URL=$slack_webhook_url_decrypt" >> $GITHUB_ENV
+      mask_plain_secret "$slack_webhook_url_decrypt"
+      write_env_var "SLACK_WEBHOOK_URL" "$slack_webhook_url_decrypt"
       fi
 
       if [ -n "${{ inputs.terraform_github_token }}" ]; then
       terraform_github_token_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.terraform_github_token }}" | base64 --decode))
-      echo "::add-mask::$terraform_github_token_decrypt"
-      echo "TERRAFORM_GITHUB_TOKEN=$terraform_github_token_decrypt" >> $GITHUB_ENV
+      mask_plain_secret "$terraform_github_token_decrypt"
+      write_env_var "TERRAFORM_GITHUB_TOKEN" "$terraform_github_token_decrypt"
       fi
 
       if [ -n "${{ inputs.github_ci_user_environments_repo_pat }}" ]; then
       github_ci_user_environments_repo_pat_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.github_ci_user_environments_repo_pat }}" | base64 --decode))
-      echo "::add-mask::$github_ci_user_environments_repo_pat_decrypt"
-      echo "GITHUB_CI_USER_ENVIRONMENTS_REPO_PAT=$github_ci_user_environments_repo_pat_decrypt" >> $GITHUB_ENV
+      mask_plain_secret "$github_ci_user_environments_repo_pat_decrypt"
+      write_env_var "GITHUB_CI_USER_ENVIRONMENTS_REPO_PAT" "$github_ci_user_environments_repo_pat_decrypt"
       fi
 
       # Note - use this method where the input is json
       if [ -n "${{ inputs.securityhub_slack_webhooks }}" ]; then
       set +x
       securityhub_slack_webhooks_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.securityhub_slack_webhooks }}" | base64 --decode))
-      for value in $(echo "$securityhub_slack_webhooks_decrypt" | jq -r '.[]'); do
-        [ -n "$value" ] && echo "::add-mask::$value"
-      done
-      {
-        echo 'SECURITYHUB_SLACK_WEBHOOKS_JSON<<EOF'
-        echo "$securityhub_slack_webhooks_decrypt"
-        echo 'EOF'
-      } >> "$GITHUB_ENV"
+      mask_json_secret "$securityhub_slack_webhooks_decrypt"
+      write_env_var "SECURITYHUB_SLACK_WEBHOOKS_JSON" "$securityhub_slack_webhooks_decrypt"
       fi
 
       # ---- Old combined secret ----
       if [ -n "${{ inputs.testing_ci_iam_user_keys }}" ]; then
       testing_ci_iam_user_keys_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_ci_iam_user_keys }}" | base64 --decode))
-      echo "::add-mask::$testing_ci_iam_user_keys_decrypt"
-      echo "TESTING_CI_IAM_USER_KEYS=$testing_ci_iam_user_keys_decrypt" >> $GITHUB_ENV
+      mask_plain_secret "$testing_ci_iam_user_keys_decrypt"
+      write_env_var "TESTING_CI_IAM_USER_KEYS" "$testing_ci_iam_user_keys_decrypt"
       fi
 
       # ---- New split secrets ----
       if [ -n "${{ inputs.testing_ci_iam_user_access_key_id }}" ]; then
         testing_ci_iam_user_access_key_id_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_ci_iam_user_access_key_id }}" | base64 --decode))
-        echo "::add-mask::$testing_ci_iam_user_access_key_id_decrypt"
-        echo "AWS_ACCESS_KEY_ID=$testing_ci_iam_user_access_key_id_decrypt" >> $GITHUB_ENV
-        echo "TESTING_CI_IAM_USER_ACCESS_KEY_ID=$testing_ci_iam_user_access_key_id_decrypt" >> $GITHUB_ENV
+        mask_plain_secret "$testing_ci_iam_user_access_key_id_decrypt"
+        write_env_var "AWS_ACCESS_KEY_ID" "$testing_ci_iam_user_access_key_id_decrypt"
+        write_env_var "TESTING_CI_IAM_USER_ACCESS_KEY_ID" "$testing_ci_iam_user_access_key_id_decrypt"
       fi
 
       if [ -n "${{ inputs.testing_ci_iam_user_secret_access_key }}" ]; then
         testing_ci_iam_user_secret_access_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.testing_ci_iam_user_secret_access_key }}" | base64 --decode))
-        echo "::add-mask::$testing_ci_iam_user_secret_access_key_decrypt"
-        echo "AWS_SECRET_ACCESS_KEY=$testing_ci_iam_user_secret_access_key_decrypt" >> $GITHUB_ENV
-        echo "TESTING_CI_IAM_USER_SECRET_ACCESS_KEY=$testing_ci_iam_user_secret_access_key_decrypt" >> $GITHUB_ENV
+        mask_plain_secret "$testing_ci_iam_user_secret_access_key_decrypt"
+        write_env_var "AWS_SECRET_ACCESS_KEY" "$testing_ci_iam_user_secret_access_key_decrypt"
+        write_env_var "TESTING_CI_IAM_USER_SECRET_ACCESS_KEY" "$testing_ci_iam_user_secret_access_key_decrypt"
       fi
 
       if [ -n "${{ inputs.nuke_account_ids }}" ]; then
       nuke_account_ids_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.nuke_account_ids }}" | base64 --decode))
-      echo "::add-mask::$nuke_account_ids_decrypt"
-      echo "NUKE_ACCOUNT_IDS=$nuke_account_ids_decrypt" >> $GITHUB_ENV
+      mask_plain_secret "$nuke_account_ids_decrypt"
+      write_env_var "NUKE_ACCOUNT_IDS" "$nuke_account_ids_decrypt"
       fi
 
       if [ -n "${{ inputs.nuke_rebuild_account_ids }}" ]; then
       nuke_rebuild_account_ids_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.nuke_rebuild_account_ids }}" | base64 --decode))
-      echo "::add-mask::$nuke_rebuild_account_ids_decrypt"
-      echo "NUKE_REBUILD_ACCOUNT_IDS=$nuke_rebuild_account_ids_decrypt" >> $GITHUB_ENV
+      mask_plain_secret "$nuke_rebuild_account_ids_decrypt"
+      write_env_var "NUKE_REBUILD_ACCOUNT_IDS" "$nuke_rebuild_account_ids_decrypt"
       fi  
 
       if [ -n "${{ inputs.nuke_account_blocklist }}" ]; then
       nuke_account_blocklist_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.nuke_account_blocklist }}" | base64 --decode))
-      echo "::add-mask::$nuke_account_blocklist_decrypt"
-      echo "NUKE_ACCOUNT_BLOCKLIST=$nuke_account_blocklist_decrypt" >> $GITHUB_ENV
+      mask_plain_secret "$nuke_account_blocklist_decrypt"
+      write_env_var "NUKE_ACCOUNT_BLOCKLIST" "$nuke_account_blocklist_decrypt"
       fi
 
       # Note - use this method where the input is plain text and not json
       if [ -n "${{ inputs.mp_github_app_private_key }}" ]; then
         set +x
         mp_github_app_private_key_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.mp_github_app_private_key }}" | base64 --decode))
-        while IFS= read -r line; do
-          [ -n "$line" ] && echo "::add-mask::$line"
-        done <<< "$mp_github_app_private_key_decrypt"
-        {
-          echo 'MP_GITHUB_APP_PRIVATE_KEY<<EOF'
-          echo "$mp_github_app_private_key_decrypt"
-          echo 'EOF'
-        } >> "$GITHUB_ENV"
+        mask_plain_secret "$mp_github_app_private_key_decrypt"
+        write_env_var "MP_GITHUB_APP_PRIVATE_KEY" "$mp_github_app_private_key_decrypt"
       fi
