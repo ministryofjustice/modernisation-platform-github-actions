@@ -38,6 +38,8 @@ cat >> "$dependabot_file" << EOF
     directory: "/"
     schedule:
       interval: "daily"
+    cooldown:
+      default-days: $dependabot_cooldown_default_days
 EOF
 
 # Bundler (only if Gemfile.lock is found at root)
@@ -46,6 +48,8 @@ EOF
     directory: "/"
     schedule:
       interval: "daily"
+    cooldown:
+      default-days: $dependabot_cooldown_default_days
 EOF
 
 # Docker
@@ -60,6 +64,8 @@ if [[ -n "$docker_files" ]]; then
     done
     echo "    schedule:" >> "$dependabot_file"
     echo "      interval: \"daily\"" >> "$dependabot_file"
+    echo "    cooldown:" >> "$dependabot_file"
+    echo "      default-days: $dependabot_cooldown_default_days" >> "$dependabot_file"
   fi
 fi
 
@@ -75,6 +81,8 @@ if [[ -n "$tf_files" ]]; then
     done
     echo "    schedule:" >> "$dependabot_file"
     echo "      interval: \"daily\"" >> "$dependabot_file"
+    echo "    cooldown:" >> "$dependabot_file"
+    echo "      default-days: $dependabot_cooldown_default_days" >> "$dependabot_file"
   fi
 fi
 
@@ -90,6 +98,8 @@ if [[ -n "$gomod_files" ]]; then
     done
     echo "    schedule:" >> "$dependabot_file"
     echo "      interval: \"daily\"" >> "$dependabot_file"
+    echo "    cooldown:" >> "$dependabot_file"
+    echo "      default-days: $dependabot_cooldown_default_days" >> "$dependabot_file"
   fi
 fi
 
@@ -105,6 +115,8 @@ if [[ -n "$py_files" ]]; then
     done
     echo "    schedule:" >> "$dependabot_file"
     echo "      interval: \"daily\"" >> "$dependabot_file"
+    echo "    cooldown:" >> "$dependabot_file"
+    echo "      default-days: $dependabot_cooldown_default_days" >> "$dependabot_file"
   fi
 fi
 
@@ -120,6 +132,8 @@ if [[ -n "$npm_files" ]]; then
     done
     echo "    schedule:" >> "$dependabot_file"
     echo "      interval: \"daily\"" >> "$dependabot_file"
+    echo "    cooldown:" >> "$dependabot_file"
+    echo "      default-days: $dependabot_cooldown_default_days" >> "$dependabot_file"
   fi
 fi
 
