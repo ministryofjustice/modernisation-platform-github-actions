@@ -38,3 +38,5 @@ jobs:
 `fetch-depth: 0` is required to get a git diff to detect changed files.
 
 `GITHUB_TOKEN` is required to write the results to the pull request. This is the built in workflow token created when you start using Actions (see [here](https://docs.github.com/en/actions/reference/authentication-in-a-workflow)) this should have read and write permissions to write to a pull request, this can be found under `Actions` in the repository `Settings`
+
+Python dependencies for this action are managed in `requirements.txt` and installed during image build.
