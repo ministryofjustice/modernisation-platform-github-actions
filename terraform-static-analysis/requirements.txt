@@ -1,2 +1,2 @@
 checkov==3.2.495
-pycares<5
+pycares<6
