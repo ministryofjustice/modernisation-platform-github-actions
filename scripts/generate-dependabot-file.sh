@@ -3,6 +3,21 @@
 set -euo pipefail
 
 dependabot_file=".github/dependabot.yml"
+
+# Dependabot cooldown configuration (applies to version updates only)
+# Docs: https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#cooldown-
+dependabot_cooldown_default_days="${DEPENDABOT_COOLDOWN_DEFAULT_DAYS:-7}"
+
+if ! [[ "$dependabot_cooldown_default_days" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: DEPENDABOT_COOLDOWN_DEFAULT_DAYS must be an integer (days), got: '$dependabot_cooldown_default_days'" >&2
+  exit 1
+fi
+
+if (( dependabot_cooldown_default_days < 1 || dependabot_cooldown_default_days > 90 )); then
+  echo "ERROR: DEPENDABOT_COOLDOWN_DEFAULT_DAYS must be between 1 and 90 (inclusive), got: '$dependabot_cooldown_default_days'" >&2
+  exit 1
+fi
+
 # Clear the dependabot file
 > "$dependabot_file"
 
@@ -23,6 +38,8 @@ cat >> "$dependabot_file" << EOF
     directory: "/"
     schedule:
       interval: "daily"
+    cooldown:
+      default-days: $dependabot_cooldown_default_days
 EOF
 
 # Bundler (only if Gemfile.lock is found at root)
@@ -31,6 +48,8 @@ EOF
     directory: "/"
     schedule:
       interval: "daily"
+    cooldown:
+      default-days: $dependabot_cooldown_default_days
 EOF
 
 # Docker
@@ -45,6 +64,8 @@ if [[ -n "$docker_files" ]]; then
     done
     echo "    schedule:" >> "$dependabot_file"
     echo "      interval: \"daily\"" >> "$dependabot_file"
+    echo "    cooldown:" >> "$dependabot_file"
+    echo "      default-days: $dependabot_cooldown_default_days" >> "$dependabot_file"
   fi
 fi
 
@@ -60,6 +81,8 @@ if [[ -n "$tf_files" ]]; then
     done
     echo "    schedule:" >> "$dependabot_file"
     echo "      interval: \"daily\"" >> "$dependabot_file"
+    echo "    cooldown:" >> "$dependabot_file"
+    echo "      default-days: $dependabot_cooldown_default_days" >> "$dependabot_file"
   fi
 fi
 
@@ -75,6 +98,8 @@ if [[ -n "$gomod_files" ]]; then
     done
     echo "    schedule:" >> "$dependabot_file"
     echo "      interval: \"daily\"" >> "$dependabot_file"
+    echo "    cooldown:" >> "$dependabot_file"
+    echo "      default-days: $dependabot_cooldown_default_days" >> "$dependabot_file"
   fi
 fi
 
@@ -90,6 +115,8 @@ if [[ -n "$py_files" ]]; then
     done
     echo "    schedule:" >> "$dependabot_file"
     echo "      interval: \"daily\"" >> "$dependabot_file"
+    echo "    cooldown:" >> "$dependabot_file"
+    echo "      default-days: $dependabot_cooldown_default_days" >> "$dependabot_file"
   fi
 fi
 
@@ -105,6 +132,8 @@ if [[ -n "$npm_files" ]]; then
     done
     echo "    schedule:" >> "$dependabot_file"
     echo "      interval: \"daily\"" >> "$dependabot_file"
+    echo "    cooldown:" >> "$dependabot_file"
+    echo "      default-days: $dependabot_cooldown_default_days" >> "$dependabot_file"
   fi
 fi
 

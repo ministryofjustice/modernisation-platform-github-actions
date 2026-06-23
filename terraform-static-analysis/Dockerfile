@@ -8,8 +8,9 @@ RUN apt-get update && apt-get install -y \
   jq \
   unzip \
   && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt /requirements.txt
 RUN pip3 install --upgrade pip && pip3 install --upgrade setuptools
-RUN pip3 install "pycares<5" "checkov==3.2.495"
+RUN pip3 install -r /requirements.txt
 
 #Install tflint
 RUN curl https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
