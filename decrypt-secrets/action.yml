@@ -175,8 +175,8 @@ runs:
 
       if [ -n "${{ inputs.mp_github_app_client_id }}" ]; then
       mp_github_app_client_id_decrypt=$(gpg --decrypt --quiet --batch --passphrase "${{ inputs.PASSPHRASE }}" --output - <(echo "${{ inputs.mp_github_app_client_id }}" | base64 --decode))
-      echo "::add-mask::$mp_github_app_client_id_decrypt"
-      echo "MP_GITHUB_APP_CLIENT_ID=$mp_github_app_client_id_decrypt" >> $GITHUB_ENV
+      mask_plain_secret "$mp_github_app_client_id_decrypt"
+      write_env_var "MP_GITHUB_APP_CLIENT_ID" "$mp_github_app_client_id_decrypt"
       fi
 
       # Note - use this method where the input is plain text and not json
