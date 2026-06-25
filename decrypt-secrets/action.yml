@@ -55,30 +55,42 @@ runs:
     run: |
       mask_plain_secret() {
         local value="$1"
-        [ -z "$value" ] && return
+        [ -z "$value" ] && return 0
 
-        echo "::add-mask::$value"
-
+        # Register the escaped (single-line) form first so the runner can
+        # mask the full value before any subsequent log output.
         local escaped="$value"
         escaped="${escaped//%/%25}"
         escaped="${escaped//$'\r'/%0D}"
         escaped="${escaped//$'\n'/%0A}"
         echo "::add-mask::$escaped"
 
-        while IFS= read -r line; do
-          [ -n "$line" ] && echo "::add-mask::$line"
-        done <<< "$value"
+        if [[ "$value" != *$'\n'* ]]; then
+          # Single-line: also register the raw value (cheap belt-and-braces).
+          echo "::add-mask::$value"
+        else
+          # Multi-line: mask each non-empty line individually.
+          while IFS= read -r line; do
+            [ -n "$line" ] && echo "::add-mask::$line"
+          done <<< "$value"
+        fi
+        return 0
       }
 
       mask_json_secret() {
         local value="$1"
-        [ -z "$value" ] && return
+        [ -z "$value" ] && return 0
 
         mask_plain_secret "$value"
 
-        while IFS= read -r string_leaf; do
-          [ -n "$string_leaf" ] && mask_plain_secret "$string_leaf"
-        done < <(printf '%s' "$value" | jq -r '.. | strings')
+        # Best-effort: if value is valid JSON, mask each string leaf as well.
+        local leaves
+        if leaves=$(printf '%s' "$value" | jq -r '.. | strings' 2>/dev/null); then
+          while IFS= read -r string_leaf; do
+            [ -n "$string_leaf" ] && mask_plain_secret "$string_leaf"
+          done <<< "$leaves"
+        fi
+        return 0
       }
 
       write_env_var() {
@@ -95,6 +107,7 @@ runs:
         else
           echo "${key}=${value}" >> "$GITHUB_ENV"
         fi
+        return 0
       }
 
       if [ -n "${{ inputs.gov_uk_notify_api_key }}" ]; then
