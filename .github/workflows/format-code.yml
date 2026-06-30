@@ -13,15 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Run Format Code Action
-        uses: ministryofjustice/modernisation-platform-github-actions/format-code@5a785223c1daad1b5159106ff5d6c6d207628986
+        uses: ministryofjustice/modernisation-platform-github-actions/format-code@91d5c1efbe43e1c8fdfc55fd39e8183fc6be8fa8 # v6.1.1
         with:
           ignore_files: "README.md"
 
       - name: Run Signed Commit Action
-        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@5a785223c1daad1b5159106ff5d6c6d207628986
+        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@91d5c1efbe43e1c8fdfc55fd39e8183fc6be8fa8 # v6.1.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_title: "GitHub Actions Code Formatter workflow"

@@ -34,7 +34,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Check out repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Generate file
         run: bash ./scripts/generate-dependabot-file.sh
@@ -43,7 +43,7 @@ jobs:
         run: bash ./scripts/git-setup.sh
 
       - name: Commit and Create PR with Signed Commit
-        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@0442287e70970e2e732fbfecf17fd362d2d21dee # v3.2.6
+        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@91d5c1efbe43e1c8fdfc55fd39e8183fc6be8fa8 # v6.1.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_title: "Automated Update: Dependabot File"
