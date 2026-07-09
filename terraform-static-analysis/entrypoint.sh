@@ -24,11 +24,25 @@ declare -i checkov_exitcode=0
 declare -i tflint_exitcode=0
 declare -i tfinit_exitcode=0
 
+CHECKOV_OUTPUT_FILE=$(mktemp)
+TFLINT_OUTPUT_FILE=$(mktemp)
+
+cleanup() {
+  rm -f "$CHECKOV_OUTPUT_FILE" "$TFLINT_OUTPUT_FILE"
+}
+
+trap cleanup EXIT
+
 # see https://github.com/actions/runner/issues/2033
 git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
 # Identify which Terraform folders have changes and need scanning
-tf_folders_with_changes=$(git diff --name-only HEAD.."origin/${INPUT_MAIN_BRANCH_NAME}" | awk '{print $1}' | grep '\.tf' | sed 's#/[^/]*$##' | grep -v '\.tf' | uniq)
+# Use three-dot diff to compare PR branch changes against the target branch merge-base.
+tf_files_with_changes=$(git diff --name-only "origin/${INPUT_MAIN_BRANCH_NAME}...HEAD" -- '*.tf')
+tf_folders_with_changes=""
+if [[ -n "${tf_files_with_changes}" ]]; then
+  tf_folders_with_changes=$(echo "${tf_files_with_changes}" | xargs -n1 dirname | sort | uniq)
+fi
 echo
 echo "TF folders with changes"
 echo "$tf_folders_with_changes"
@@ -105,16 +119,22 @@ run_tflint() {
 ### SCAN TYPE
 case ${INPUT_SCAN_TYPE} in
 full)
-  CHECKOV_OUTPUT=$(run_checkov "${all_tf_folders}")
-  TFLINT_OUTPUT=$(run_tflint "${all_tf_folders}")
+  run_checkov "${all_tf_folders}" > "$CHECKOV_OUTPUT_FILE" 2>&1
+  cat "$CHECKOV_OUTPUT_FILE"
+  run_tflint "${all_tf_folders}" > "$TFLINT_OUTPUT_FILE" 2>&1
+  cat "$TFLINT_OUTPUT_FILE"
   ;;
 changed)
-  CHECKOV_OUTPUT=$(run_checkov "${tf_folders_with_changes}")
-  TFLINT_OUTPUT=$(run_tflint "${tf_folders_with_changes}")
+  run_checkov "${tf_folders_with_changes}" > "$CHECKOV_OUTPUT_FILE" 2>&1
+  cat "$CHECKOV_OUTPUT_FILE"
+  run_tflint "${tf_folders_with_changes}" > "$TFLINT_OUTPUT_FILE" 2>&1
+  cat "$TFLINT_OUTPUT_FILE"
   ;;
 *)
-  CHECKOV_OUTPUT=$(run_checkov "${INPUT_TERRAFORM_WORKING_DIR}")
-  TFLINT_OUTPUT=$(run_tflint "${INPUT_TERRAFORM_WORKING_DIR}")
+  run_checkov "${INPUT_TERRAFORM_WORKING_DIR}" > "$CHECKOV_OUTPUT_FILE" 2>&1
+  cat "$CHECKOV_OUTPUT_FILE"
+  run_tflint "${INPUT_TERRAFORM_WORKING_DIR}" > "$TFLINT_OUTPUT_FILE" 2>&1
+  cat "$TFLINT_OUTPUT_FILE"
   ;;
 esac
 
@@ -130,8 +150,8 @@ clean_output() {
     | sed 's/\r//'
 }
 
-CHECKOV_CLEAN=$(clean_output "${CHECKOV_OUTPUT}")
-TFLINT_CLEAN=$(clean_output "${TFLINT_OUTPUT}")
+CHECKOV_CLEAN=$(clean_output "$(cat "$CHECKOV_OUTPUT_FILE")")
+TFLINT_CLEAN=$(clean_output "$(cat "$TFLINT_OUTPUT_FILE")")
 
 ### PR COMMENT HEADER MARKER
 COMMENT_HEADER="<!-- terraform-static-analysis-comment -->"
