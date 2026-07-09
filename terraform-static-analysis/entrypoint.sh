@@ -28,7 +28,12 @@ declare -i tfinit_exitcode=0
 git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
 # Identify which Terraform folders have changes and need scanning
-tf_folders_with_changes=$(git diff --name-only HEAD.."origin/${INPUT_MAIN_BRANCH_NAME}" | awk '{print $1}' | grep '\.tf' | sed 's#/[^/]*$##' | grep -v '\.tf' | uniq)
+# Use three-dot diff to compare PR branch changes against the target branch merge-base.
+tf_files_with_changes=$(git diff --name-only "origin/${INPUT_MAIN_BRANCH_NAME}...HEAD" -- '*.tf')
+tf_folders_with_changes=""
+if [[ -n "${tf_files_with_changes}" ]]; then
+  tf_folders_with_changes=$(echo "${tf_files_with_changes}" | xargs -n1 dirname | sort | uniq)
+fi
 echo
 echo "TF folders with changes"
 echo "$tf_folders_with_changes"
