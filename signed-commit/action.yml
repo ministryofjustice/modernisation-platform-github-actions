@@ -189,23 +189,27 @@ runs:
         if [ -n "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
         fi
-        # Initialize an empty JSON object for the additions
-        files_for_commit='{"additions": []}'
+        # Initialize an empty JSON object for the additions on disk to avoid ARG_MAX limits
+        echo '{"additions": []}' > /tmp/files_for_commit.json
 
         # Read the changed files from changed_files.txt
         while IFS= read -r file; do
           if [[ -f "$file" ]]; then
-            # Base64 encode the contents of the file
-            base64_content=$(base64 < "$file" | tr -d '\n')
+            # Base64 encode the contents of the file directly to a temp file.
+            # Avoid storing in a shell variable and passing via --arg, both of
+            # which can exceed the OS ARG_MAX limit for large files.
+            base64 < "$file" | tr -d '\n' > /tmp/b64_content.txt
 
-            # Construct a JSON object for this file and append it to the additions array
-            files_for_commit=$(echo "$files_for_commit" | jq --arg path "$file" --arg content "$base64_content" \
-              '.additions += [{ "path": $path, "contents": $content }]')
+            # Use --rawfile so jq reads the content from disk, not from a shell argument
+            jq --arg path "$file" --rawfile content /tmp/b64_content.txt \
+              '.additions += [{ "path": $path, "contents": $content }]' \
+              /tmp/files_for_commit.json > /tmp/files_for_commit_new.json
+            mv /tmp/files_for_commit_new.json /tmp/files_for_commit.json
           fi
         done < changed_files.txt
 
         # Output the final JSON array
-        echo "$files_for_commit" > files_for_commit.json
+        cp /tmp/files_for_commit.json files_for_commit.json
       shell: bash
 
     - name: Create signed commit using GraphQL
