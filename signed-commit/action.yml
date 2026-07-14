@@ -195,12 +195,13 @@ runs:
         # Read the changed files from changed_files.txt
         while IFS= read -r file; do
           if [[ -f "$file" ]]; then
-            # Base64 encode the contents of the file
-            base64_content=$(base64 < "$file" | tr -d '\n')
+            # Base64 encode the contents of the file directly to a temp file.
+            # Avoid storing in a shell variable and passing via --arg, both of
+            # which can exceed the OS ARG_MAX limit for large files.
+            base64 < "$file" | tr -d '\n' > /tmp/b64_content.txt
 
-            # Construct a JSON object for this file and append it to the additions array
-            # Use a temp file to avoid passing large variables as shell arguments (ARG_MAX)
-            jq --arg path "$file" --arg content "$base64_content" \
+            # Use --rawfile so jq reads the content from disk, not from a shell argument
+            jq --arg path "$file" --rawfile content /tmp/b64_content.txt \
               '.additions += [{ "path": $path, "contents": $content }]' \
               /tmp/files_for_commit.json > /tmp/files_for_commit_new.json
             mv /tmp/files_for_commit_new.json /tmp/files_for_commit.json
