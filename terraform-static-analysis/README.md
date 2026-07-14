@@ -1,6 +1,6 @@
 # Terraform Static Analysis Action
 
-This action combines [TFSEC](https://github.com/tfsec/tfsec), [Checkov](https://github.com/bridgecrewio/checkov) and [tflint](https://github.com/terraform-linters/tflint) into one action, loosely based on the [TFSEC action](https://github.com/triat/terraform-security-scan) and [Checkov actions](https://github.com/bridgecrewio/checkov-action) here.
+This action combines [Checkov](https://github.com/bridgecrewio/checkov) and [TFLint](https://github.com/terraform-linters/tflint) into one action.
 
 The main reason for combining these checks is to enable one action to run which can cover multiple checks as well as multiple and nested Terraform folders. This action also has logic to perform different scan options depending if you want to scan your whole repo or only individual or changed folders:
 
@@ -30,7 +30,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         scan_type: changed
-        tfsec_exclude: AWS095
+        checkov_exclude: CKV_AWS_95
 ```
 
 ### Notes
