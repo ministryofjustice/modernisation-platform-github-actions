@@ -81,6 +81,12 @@ run_checkov() {
 run_tflint() {
   line_break
 
+  # Workaround for upstream tflint plugin attestation panic when GITHUB_TOKEN is set.
+  # The action still uses GITHUB_TOKEN later for PR comments.
+  run_tflint_command() {
+    env -u GITHUB_TOKEN tflint "$@"
+  }
+
   if [[ -n $INPUT_TFLINT_CONFIG ]]; then
     echo "Setting custom config ${INPUT_TFLINT_CONFIG}"
     tflint_config="/tflint-configs/${INPUT_TFLINT_CONFIG}"
@@ -89,7 +95,12 @@ run_tflint() {
     tflint_config="/tflint-configs/tflint.default.hcl"
   fi
 
-  tflint --init --config "$tflint_config"
+  run_tflint_command --init --config "$tflint_config"
+  if [[ $? -ne 0 ]]; then
+    echo "tflint --init failed"
+    tflint_exitcode=1
+    return $tflint_exitcode
+  fi
 
   echo "tflint checking:"
   echo "$1"
@@ -103,9 +114,9 @@ run_tflint() {
       if [[ -n "$INPUT_TFLINT_EXCLUDE" ]]; then
         readarray -d , -t tflint_exclusions <<<"$INPUT_TFLINT_EXCLUDE"
         tflint_exclusions_list=("${tflint_exclusions[@]/#/--disable-rule=}")
-        tflint --config "$tflint_config" ${tflint_exclusions_list[@]} --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
+        run_tflint_command --config "$tflint_config" ${tflint_exclusions_list[@]} --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
       else
-        tflint --config "$tflint_config" --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
+        run_tflint_command --config "$tflint_config" --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
       fi
     else
       echo "Skipping folder ${directory}"

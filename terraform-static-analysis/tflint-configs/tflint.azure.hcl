@@ -1,14 +1,16 @@
 plugin "azurerm" {
     enabled = true
-    version = "0.27.0"
+    version = "0.32.0"
     source  = "github.com/terraform-linters/tflint-ruleset-azurerm"
+    signature = "pgp"
 }
 
 plugin "terraform" {
     enabled = true
-    version = "0.9.1"
+    version = "0.15.0"
     preset  = "recommended"
     source  = "github.com/terraform-linters/tflint-ruleset-terraform"
+    signature = "pgp"
 }
 
 rule "terraform_comment_syntax" {

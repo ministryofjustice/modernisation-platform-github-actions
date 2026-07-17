@@ -39,4 +39,6 @@ jobs:
 
 `GITHUB_TOKEN` is required to write the results to the pull request. This is the built in workflow token created when you start using Actions (see [here](https://docs.github.com/en/actions/reference/authentication-in-a-workflow)) this should have read and write permissions to write to a pull request, this can be found under `Actions` in the repository `Settings`
 
+Temporary TFLint workaround for [terraform-linters/tflint#2591](https://github.com/terraform-linters/tflint/issues/2591): bundled `tflint-configs` use `signature = "pgp"` to avoid the broken attestation verification path. Remove these `signature` settings once upstream fix [terraform-linters/tflint#2593](https://github.com/terraform-linters/tflint/pull/2593) is released and adopted.
+
 Python dependencies for this action are managed in `requirements.txt` and installed during image build.
