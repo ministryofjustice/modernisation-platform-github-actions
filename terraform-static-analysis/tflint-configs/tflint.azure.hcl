@@ -2,6 +2,7 @@ plugin "azurerm" {
     enabled = true
     version = "0.27.0"
     source  = "github.com/terraform-linters/tflint-ruleset-azurerm"
+    signature = "pgp"
 }
 
 plugin "terraform" {
@@ -9,6 +10,7 @@ plugin "terraform" {
     version = "0.9.1"
     preset  = "recommended"
     source  = "github.com/terraform-linters/tflint-ruleset-terraform"
+    signature = "pgp"
 }
 
 rule "terraform_comment_syntax" {

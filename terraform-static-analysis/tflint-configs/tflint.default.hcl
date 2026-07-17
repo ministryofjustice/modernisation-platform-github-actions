@@ -3,6 +3,7 @@ plugin "terraform" {
     version = "0.9.1"
     preset  = "recommended"
     source  = "github.com/terraform-linters/tflint-ruleset-terraform"
+    signature = "pgp"
 }
 
 rule "terraform_deprecated_index" {
