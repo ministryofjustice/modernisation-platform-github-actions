@@ -1,13 +1,13 @@
 plugin "aws" {
     enabled = true
-    version = "0.33.0"
+    version = "0.48.0"
     source  = "github.com/terraform-linters/tflint-ruleset-aws"
     signature = "pgp"
 }
 
 plugin "terraform" {
     enabled = true
-    version = "0.9.1"
+    version = "0.15.0"
     preset  = "recommended"
     source  = "github.com/terraform-linters/tflint-ruleset-terraform"
     signature = "pgp"
