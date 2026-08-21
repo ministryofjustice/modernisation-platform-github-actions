@@ -1,4 +1,4 @@
-FROM golang:1.27rc2-bookworm
+FROM golang:1.27rc3-bookworm
 
 #Install Checkov
 RUN apt-get update && apt-get install -y \
