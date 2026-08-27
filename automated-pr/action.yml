@@ -1,0 +1,269 @@
+name: "Signed Commit Action"
+description: "Creates a signed commit using GitHub GraphQL and optionally creates a PR"
+author: "Aaron Robinson"
+
+inputs:
+  git_path:
+    description: "Path used by git to add files"
+    required: false
+    default: "."
+  pr_title:
+    description: "Title for the PR (only required if creating a new PR)"
+    required: false
+  pr_body:
+    description: "Body for the PR (only required if creating a new PR)"
+    required: false
+  github_token:
+    description: "GitHub token with permissions to commit and create PRs"
+    required: true
+  terraform_github_token:
+    description: "GitHub token used for operations against the remote repository"
+    required: false
+  remote_repository:
+    description: "The remote repository organisation & name if the changes are to be pushed to a remote repository"
+    required: false
+  remote_repository_path:
+    description: "Path to the remote repository's local git directory"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check for changes
+      run: |
+        # Show the status and diff before attempting to add files
+        echo "===== Check for changes ====="
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+        fi
+        git_path="${{ inputs.git_path }}"
+        git status
+        git diff
+        git add "$git_path"
+        changes=$(git diff --staged --name-only)
+
+        if [ -z "$changes" ]; then
+          echo "No changes detected."
+          echo "changes=false" >> $GITHUB_ENV
+        else
+          echo "Changes detected."
+          echo "changes=true" >> $GITHUB_ENV
+          git diff --staged --name-only > changed_files.txt
+          cat changed_files.txt
+        fi
+      shell: bash
+
+    - name: Get latest commit
+      if: env.changes == 'true'
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        echo "===== Determine latest commit SHA ====="
+        # Set repo path and name
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+          github_repo="${{ inputs.remote_repository }}"
+        else
+          github_repo="${GITHUB_REPOSITORY}"
+        fi
+        
+        # Debug output
+        echo "github_repo: $github_repo"
+        echo "GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}"
+        
+        # Fallback if github_repo is still empty
+        if [ -z "$github_repo" ]; then
+          echo "⚠️ github_repo is empty. Please ensure GITHUB_REPOSITORY or remote_repository is set."
+          exit 1
+        fi
+        
+        # Get current branch name
+        branch_name="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+        
+        # Fallback to remote HEAD if symbolic-ref fails
+        if [ -z "$branch_name" ]; then
+          echo "⚠️ Could not determine branch from symbolic-ref, trying remote HEAD..."
+          branch_name="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
+        fi
+        
+        if [ -z "$branch_name" ]; then
+          echo "❌ Could not determine branch name"
+          exit 1
+        fi
+        
+        echo "✅ Using branch: $branch_name"
+        echo "branch_name=$branch_name" >> $GITHUB_ENV
+        
+        # Set and validate GitHub token
+        GITHUB_TOKEN="${{ inputs.github_token }}"
+        if [ -z "$GITHUB_TOKEN" ]; then
+          GITHUB_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
+        fi
+        if [ -z "$GITHUB_TOKEN" ]; then
+          echo "❌ GITHUB_TOKEN is not set"
+          exit 1
+        fi
+        
+        # Debug API call
+        api_url="https://api.github.com/repos/${github_repo}/git/refs/heads/${branch_name}"
+        echo "Calling GitHub API: $api_url"
+        
+        commit_oid=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+          -H "Content-Type: application/json" \
+          "$api_url" | jq -r '.object.sha')
+        
+        if [ -z "$commit_oid" ] || [ "$commit_oid" = "null" ]; then
+          echo "❌ Failed to fetch commit SHA from GitHub API"
+          echo "🔍 Response:"
+          curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            "$api_url"
+          exit 1
+        fi
+        
+        echo "✅ Commit OID resolved: $commit_oid"
+        echo "commit_oid=$commit_oid" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Generate new branch
+      if: env.changes == 'true' && github.event_name != 'pull_request'
+      env:
+        GITHUB_TOKEN: ${{ inputs.terraform_github_token || env.TERRAFORM_GITHUB_TOKEN || inputs.github_token }}
+      run: |
+        echo "===== Generate new branch ====="
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+        fi
+
+        date=$(date +%Y_%m_%d_%H_%M)
+        branch_name="signed_commit_$date"
+        git checkout -b $branch_name
+
+        if [ -n "${{ inputs.remote_repository }}" ]; then
+          git remote set-url origin "https://x-access-token:$GITHUB_TOKEN@github.com/${{ inputs.remote_repository }}.git"
+        fi
+
+        git push -u origin $branch_name
+        echo "branch_name=$branch_name" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Use current branch if on a PR
+      if: env.changes == 'true' && github.event_name == 'pull_request'
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        echo "branch_name=${GITHUB_HEAD_REF}" >> $GITHUB_ENV
+        
+        # Re-fetch commit OID for the PR branch
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+          github_repo="${{ inputs.remote_repository }}"
+        else
+          github_repo="${GITHUB_REPOSITORY}"
+        fi
+        
+        GITHUB_TOKEN="${{ inputs.github_token }}"
+        if [ -z "$GITHUB_TOKEN" ]; then
+          GITHUB_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
+        fi
+        
+        echo "🔄 Fetching commit OID for PR branch: ${GITHUB_HEAD_REF}"
+        api_url="https://api.github.com/repos/${github_repo}/git/refs/heads/${GITHUB_HEAD_REF}"
+        pr_commit_oid=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+          -H "Content-Type: application/json" \
+          "$api_url" | jq -r '.object.sha')
+        
+        if [ -z "$pr_commit_oid" ] || [ "$pr_commit_oid" = "null" ]; then
+          echo "❌ Failed to fetch commit SHA for PR branch"
+          exit 1
+        fi
+        
+        echo "✅ PR branch commit OID: $pr_commit_oid"
+        echo "commit_oid=$pr_commit_oid" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Prepare the changes for GraphQL
+      if: env.changes == 'true'
+      run: |
+        echo "===== Prepare the changes for GraphQL ====="
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+        fi
+        # Initialize an empty JSON object for the additions on disk to avoid ARG_MAX limits
+        echo '{"additions": []}' > /tmp/files_for_commit.json
+
+        # Read the changed files from changed_files.txt
+        while IFS= read -r file; do
+          if [[ -f "$file" ]]; then
+            # Base64 encode the contents of the file directly to a temp file.
+            # Avoid storing in a shell variable and passing via --arg, both of
+            # which can exceed the OS ARG_MAX limit for large files.
+            base64 < "$file" | tr -d '\n' > /tmp/b64_content.txt
+
+            # Use --rawfile so jq reads the content from disk, not from a shell argument
+            jq --arg path "$file" --rawfile content /tmp/b64_content.txt \
+              '.additions += [{ "path": $path, "contents": $content }]' \
+              /tmp/files_for_commit.json > /tmp/files_for_commit_new.json
+            mv /tmp/files_for_commit_new.json /tmp/files_for_commit.json
+          fi
+        done < changed_files.txt
+
+        # Output the final JSON array
+        cp /tmp/files_for_commit.json files_for_commit.json
+      shell: bash
+
+    - name: Create signed commit using GraphQL
+      if: env.changes == 'true'
+      run: |
+        echo "===== Create signed commit using GraphQL ====="
+        if [ -n "${{ inputs.remote_repository_path }}" ]; then
+          cd "${{ inputs.remote_repository_path }}"
+          github_repo="${{ inputs.remote_repository }}"
+        else
+          github_repo="${{ github.repository }}"
+        fi
+
+        # Fallback for GITHUB_TOKEN if not set
+        GITHUB_TOKEN="${{ inputs.github_token }}"
+        if [ -z "$GITHUB_TOKEN" ]; then
+          GITHUB_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
+        fi
+
+        commit_message="Automated signed commit update"
+
+        jq -n \
+          --arg repository "$github_repo" \
+          --arg branch_name "$branch_name" \
+          --arg commit_oid "$commit_oid" \
+          --arg commit_message "$commit_message" \
+          --slurpfile fileChanges files_for_commit.json \
+          '{
+            query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }",
+            variables: {
+              input: {
+                branch: {
+                  repositoryNameWithOwner: $repository,
+                  branchName: $branch_name
+                },
+                message: {
+                  headline: $commit_message
+                },
+                fileChanges: $fileChanges[0],
+                expectedHeadOid: $commit_oid
+              }
+            }
+          }' > mutation_payload.json
+
+        RESPONSE=$(curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" \
+          -H "Content-Type: application/json" \
+          --data @mutation_payload.json https://api.github.com/graphql)
+
+        COMMIT_OID=$(echo "$RESPONSE" | jq -r ".data.createCommitOnBranch.commit.oid")
+
+        if [ "$COMMIT_OID" != "null" ]; then
+          echo "✅ Commit successfully created with OID: $COMMIT_OID"
+        else
+          echo "❌ Error creating commit: $RESPONSE"
+          exit 1
+        fi
+      shell: bash
