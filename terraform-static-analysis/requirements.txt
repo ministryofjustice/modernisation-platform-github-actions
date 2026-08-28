@@ -1,2 +1,2 @@
-checkov==3.3.12
+checkov==3.3.13
 pycares<5
