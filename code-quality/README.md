@@ -14,6 +14,9 @@ scripts and per-repository security workflows across the estate.
 | SCA                  | MegaLinter: `REPOSITORY_GRYPE`, plus `actions/dependency-review-action` on pull requests                                                                                                                                                  |
 | Runner security      | `step-security/harden-runner` in audit mode on public repositories                                                                                                                                                                        |
 
+Yamllint findings are advisory during rollout. It reports YAML issues without blocking a pull
+request, including the conventional GitHub Actions `on:` key that Yamllint's YAML 1.1 rules flag.
+
 Findings are uploaded as SARIF to the repository's GitHub Security tab, and the full MegaLinter
 report is attached to the run as an artifact.
 
