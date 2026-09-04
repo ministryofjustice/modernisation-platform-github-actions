@@ -10,7 +10,7 @@ scripts and per-repository security workflows across the estate.
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Linting / formatting | MegaLinter: `ACTION_ACTIONLINT`, `BASH_SHELLCHECK`, `JSON_PRETTIER`, `MARKDOWN_MARKDOWNLINT`, `TERRAFORM_TERRAFORM_FMT`, `TERRAFORM_TFLINT`, `YAML_PRETTIER` |
 | SAST                 | MegaLinter: `REPOSITORY_CHECKOV`, `REPOSITORY_SEMGREP`, plus optional CodeQL                                                                                 |
-| Secrets              | MegaLinter: `REPOSITORY_GITLEAKS`                                                                                                                            |
+| Secrets              | MegaLinter: `REPOSITORY_BETTERLEAKS`                                                                                                                         |
 | SCA                  | MegaLinter: `REPOSITORY_GRYPE`, plus `actions/dependency-review-action` on pull requests                                                                     |
 | Runner security      | `step-security/harden-runner` in audit mode on public repositories                                                                                           |
 
