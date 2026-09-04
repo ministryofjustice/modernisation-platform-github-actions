@@ -6,13 +6,16 @@ scripts and per-repository security workflows across the estate.
 
 ## What it runs
 
-| Category             | Tooling                                                                                                                                                      |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Linting / formatting | MegaLinter: `ACTION_ACTIONLINT`, `BASH_SHELLCHECK`, `JSON_PRETTIER`, `MARKDOWN_MARKDOWNLINT`, `TERRAFORM_TERRAFORM_FMT`, `TERRAFORM_TFLINT`, `YAML_PRETTIER` |
-| SAST                 | MegaLinter: `REPOSITORY_CHECKOV`, `REPOSITORY_SEMGREP`, plus optional CodeQL                                                                                 |
-| Secrets              | MegaLinter: `REPOSITORY_BETTERLEAKS`                                                                                                                         |
-| SCA                  | MegaLinter: `REPOSITORY_GRYPE`, plus `actions/dependency-review-action` on pull requests                                                                     |
-| Runner security      | `step-security/harden-runner` in audit mode on public repositories                                                                                           |
+| Category             | Tooling                                                                                                                                                                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Linting / formatting | MegaLinter: `ACTION_ACTIONLINT`, `BASH_SHELLCHECK`, `DOCKERFILE_HADOLINT`, `EDITORCONFIG_EDITORCONFIG_CHECKER`, `JSON_PRETTIER`, `MARKDOWN_MARKDOWNLINT`, `TERRAFORM_TERRAFORM_FMT`, `TERRAFORM_TFLINT`, `YAML_PRETTIER`, `YAML_YAMLLINT` |
+| SAST                 | MegaLinter: `ACTION_ZIZMOR`, `REPOSITORY_CHECKOV`, `REPOSITORY_SEMGREP`, plus optional CodeQL                                                                                                                                             |
+| Secrets              | MegaLinter: `REPOSITORY_BETTERLEAKS`                                                                                                                                                                                                      |
+| SCA                  | MegaLinter: `REPOSITORY_GRYPE`, plus `actions/dependency-review-action` on pull requests                                                                                                                                                  |
+| Runner security      | `step-security/harden-runner` in audit mode on public repositories                                                                                                                                                                        |
+
+Yamllint findings are advisory during rollout. It reports YAML issues without blocking a pull
+request, including the conventional GitHub Actions `on:` key that Yamllint's YAML 1.1 rules flag.
 
 Findings are uploaded as SARIF to the repository's GitHub Security tab, and the full MegaLinter
 report is attached to the run as an artifact.
