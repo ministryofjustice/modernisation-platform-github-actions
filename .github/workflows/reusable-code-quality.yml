@@ -32,6 +32,16 @@ on:
         required: false
         type: string
         default: ""
+      checkov_arguments:
+        description: "Additional Checkov CLI arguments, e.g. '--skip-check CKV_AWS_126'."
+        required: false
+        type: string
+        default: ""
+      tflint_arguments:
+        description: "Additional tflint CLI arguments, e.g. '--disable-rule=terraform_unused_declarations'."
+        required: false
+        type: string
+        default: ""
       apply_fixes:
         description: "Commit safe formatting fixes back to the pull request branch."
         required: false
@@ -105,6 +115,8 @@ jobs:
           DISABLE_LINTERS: ${{ inputs.disable_linters }}
           FILTER_REGEX_EXCLUDE: ${{ inputs.filter_regex_exclude }}
           VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase != '' && inputs.validate_all_codebase || ((github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main' && 'true') || 'false' }}
+          REPOSITORY_CHECKOV_ARGUMENTS: ${{ inputs.checkov_arguments }}
+          TERRAFORM_TFLINT_ARGUMENTS: ${{ inputs.tflint_arguments }}
           APPLY_FIXES: ${{ inputs.apply_fixes && 'JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,TERRAFORM_TERRAFORM_FMT,YAML_PRETTIER' || 'none' }}
           APPLY_FIXES_EVENT: pull_request
           APPLY_FIXES_MODE: pull_request
