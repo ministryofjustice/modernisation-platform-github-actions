@@ -18,9 +18,9 @@ Findings are uploaded as SARIF to the repository's GitHub Security tab, and the 
 report is attached to the run as an artifact.
 
 On pull requests, MegaLinter runs every baseline linter, including Checkov and TFLint, only against
-the files changed by that pull request. Scheduled and manually dispatched runs use full project
-scans, so existing findings in other teams' application directories do not appear on a developer's
-pull request.
+the files changed by that pull request. Checkov uses per-file mode so pull requests without IaC
+changes do not fail. Scheduled and manually dispatched runs use full project scans, so existing
+findings in other teams' application directories do not appear on a developer's pull request.
 
 Trivy is deliberately not part of the baseline. Grype covers dependency vulnerabilities and Checkov
 covers IaC misconfiguration.
