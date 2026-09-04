@@ -119,8 +119,8 @@ jobs:
 | `filter_regex_exclude`               | `""`            | Regex of paths to exclude from linting and SAST.                                         |
 | `validate_all_codebase`              | `""`            | `true`/`false`. Defaults to full scans on `main` and schedules, changed files otherwise. |
 | `megalinter_config`                  | `""`            | Path to a repository specific `.mega-linter.yml`.                                        |
-| `checkov_arguments`                  | `""`            | Additional Checkov CLI arguments.                                                       |
-| `tflint_arguments`                   | `""`            | Additional tflint CLI arguments.                                                        |
+| `checkov_arguments`                  | `""`            | Additional Checkov CLI arguments.                                                        |
+| `tflint_arguments`                   | `""`            | Additional tflint CLI arguments.                                                         |
 | `apply_fixes`                        | `true`          | Commit safe formatting fixes back to the pull request branch.                            |
 | `enable_dependency_review`           | `true`          | Run dependency review on pull requests.                                                  |
 | `dependency_review_fail_on_severity` | `high`          | `low`, `moderate`, `high` or `critical`.                                                 |
