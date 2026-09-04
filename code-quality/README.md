@@ -42,6 +42,9 @@ signed commit. Only `JSON_PRETTIER`, `MARKDOWN_MARKDOWNLINT`, `TERRAFORM_TERRAFO
 `YAML_PRETTIER` are permitted to write, so no logic-changing linter can rewrite code. Set
 `apply_fixes: false` to report only.
 
+YAML files under `.github/` are excluded from Prettier fixes, matching the existing `format-code`
+action and avoiding workflow file changes from the auto-fix commit path.
+
 Fixes are skipped for pull requests raised from forks, as the token cannot write to the head branch.
 
 MegaLinter cannot produce signed commits. Its own `APPLY_FIXES_MODE: commit` pushes an unsigned
@@ -101,6 +104,7 @@ jobs:
     permissions:
       actions: read
       contents: write
+      issues: write
       pull-requests: write
       security-events: write
     uses: ministryofjustice/modernisation-platform-github-actions/.github/workflows/reusable-code-quality.yml@<commit-sha> # vX.Y.Z
@@ -130,5 +134,6 @@ narrow what the caller has:
 
 - `contents: write` — checkout and commit formatting fixes (`contents: read` is enough with `apply_fixes: false`)
 - `actions: read` — CodeQL analysis metadata
+- `issues: write` — MegaLinter pull request fix comments
 - `security-events: write` — SARIF upload
 - `pull-requests: write` — dependency review PR summary

@@ -76,6 +76,8 @@ jobs:
     runs-on: ${{ inputs.runs_on }}
     permissions:
       contents: write
+      issues: write
+      pull-requests: write
       security-events: write
     steps:
       - name: Harden Runner
@@ -109,6 +111,7 @@ jobs:
           EMAIL_REPORTER: false
           REPORT_OUTPUT_FOLDER: megalinter-reports
           REPORTERS: sarif
+          YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
 
       - name: Archive MegaLinter reports
         if: ${{ !cancelled() }}
@@ -140,7 +143,9 @@ jobs:
       - name: Remove report artefacts before committing
         if: ${{ !cancelled() && inputs.apply_fixes && github.event_name == 'pull_request' }}
         shell: bash
-        run: rm -rf megalinter-reports mega-linter.log
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" megalinter-reports mega-linter.log 2>/dev/null || true
+          rm -rf megalinter-reports mega-linter.log
 
       - name: Commit formatting fixes
         # Skipped for fork pull requests, where the token cannot write to the head branch.
