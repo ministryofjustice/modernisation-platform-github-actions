@@ -116,7 +116,9 @@ jobs:
           FILTER_REGEX_EXCLUDE: ${{ inputs.filter_regex_exclude }}
           VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase != '' && inputs.validate_all_codebase || ((github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main' && 'true') || 'false' }}
           REPOSITORY_CHECKOV_ARGUMENTS: ${{ inputs.checkov_arguments }}
+          REPOSITORY_CHECKOV_CLI_LINT_MODE: ${{ github.event_name == 'pull_request' && 'list_of_files' || 'project' }}
           TERRAFORM_TFLINT_ARGUMENTS: ${{ inputs.tflint_arguments }}
+          TERRAFORM_TFLINT_CLI_LINT_MODE: ${{ github.event_name == 'pull_request' && 'list_of_files' || 'project' }}
           APPLY_FIXES: ${{ inputs.apply_fixes && 'JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,TERRAFORM_TERRAFORM_FMT,YAML_PRETTIER' || 'none' }}
           APPLY_FIXES_EVENT: pull_request
           APPLY_FIXES_MODE: pull_request
