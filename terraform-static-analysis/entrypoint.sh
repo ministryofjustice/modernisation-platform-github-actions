@@ -22,11 +22,11 @@ line_break() {
 
 declare -i checkov_exitcode=0
 declare -i tflint_exitcode=0
-declare -i tfinit_exitcode=0
 
 CHECKOV_OUTPUT_FILE=$(mktemp)
 TFLINT_OUTPUT_FILE=$(mktemp)
 
+# shellcheck disable=SC2329 # invoked indirectly by the EXIT trap below
 cleanup() {
   rm -f "$CHECKOV_OUTPUT_FILE" "$TFLINT_OUTPUT_FILE"
 }
@@ -57,8 +57,8 @@ run_checkov() {
   line_break
   echo "Checkov will check the following folders:"
   echo "$1"
-  directories=($1)
-  for directory in ${directories[@]}; do
+  mapfile -t directories < <(printf '%s\n' "$1" | awk 'NF')
+  for directory in "${directories[@]}"; do
     line_break
     echo "Running Checkov in ${directory}"
     terraform_working_dir="${GITHUB_WORKSPACE}/${directory}"
@@ -95,8 +95,7 @@ run_tflint() {
     tflint_config="/tflint-configs/tflint.default.hcl"
   fi
 
-  run_tflint_command --init --config "$tflint_config"
-  if [[ $? -ne 0 ]]; then
+  if ! run_tflint_command --init --config "$tflint_config"; then
     echo "tflint --init failed"
     tflint_exitcode=1
     return $tflint_exitcode
@@ -104,8 +103,8 @@ run_tflint() {
 
   echo "tflint checking:"
   echo "$1"
-  directories=($1)
-  for directory in ${directories[@]}; do
+  mapfile -t directories < <(printf '%s\n' "$1" | awk 'NF')
+  for directory in "${directories[@]}"; do
     line_break
     echo "Running tflint in ${directory}"
     terraform_working_dir="${GITHUB_WORKSPACE}/${directory}"
@@ -114,7 +113,7 @@ run_tflint() {
       if [[ -n "$INPUT_TFLINT_EXCLUDE" ]]; then
         readarray -d , -t tflint_exclusions <<<"$INPUT_TFLINT_EXCLUDE"
         tflint_exclusions_list=("${tflint_exclusions[@]/#/--disable-rule=}")
-        run_tflint_command --config "$tflint_config" ${tflint_exclusions_list[@]} --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
+        run_tflint_command --config "$tflint_config" "${tflint_exclusions_list[@]}" --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
       else
         run_tflint_command --config "$tflint_config" --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
       fi
