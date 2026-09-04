@@ -31,7 +31,7 @@ an AGPL tool as a CI step places no obligation on the code being scanned.
 ### Why the `all` MegaLinter image
 
 MegaLinter flavours are strict subsets of the default `all` image, which carries every linter
-(124 at v8 versus 55 in the `terraform` flavour). Using `all` means no linter is unavailable to any
+(124 in the current docs versus 55 in the `terraform` flavour). Using `all` means no linter is unavailable to any
 repository and the same workflow works for Terraform, Go, Python and documentation repos alike. The
 cost is a larger image pull, not reduced capability.
 
