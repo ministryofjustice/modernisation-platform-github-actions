@@ -1,0 +1,267 @@
+---
+name: Reusable Code Quality
+
+# Single, opinionated, reusable workflow providing a baseline of
+# linting, SAST and SCA for all Modernisation Platform repositories.
+
+on:
+  workflow_call:
+    inputs:
+      enable_linters:
+        description: "Comma separated MegaLinter linters to add to the opinionated baseline."
+        required: false
+        type: string
+        default: ""
+      disable_linters:
+        description: "Comma separated list of linters to remove from the baseline."
+        required: false
+        type: string
+        default: ""
+      filter_regex_exclude:
+        description: "Regex of paths to exclude from linting and SAST."
+        required: false
+        type: string
+        default: ""
+      validate_all_codebase:
+        description: "Scan the whole codebase rather than only changed files. Defaults to true on main and schedules."
+        required: false
+        type: string
+        default: ""
+      megalinter_config:
+        description: "Path to a repository specific .mega-linter.yml, relative to the repository root."
+        required: false
+        type: string
+        default: ""
+      apply_fixes:
+        description: "Commit safe formatting fixes back to the pull request branch."
+        required: false
+        type: boolean
+        default: true
+      enable_dependency_review:
+        description: "Run dependency review (SCA) on pull requests."
+        required: false
+        type: boolean
+        default: true
+      dependency_review_fail_on_severity:
+        description: "Minimum severity that fails dependency review: low, moderate, high or critical."
+        required: false
+        type: string
+        default: "high"
+      codeql_languages:
+        description: "JSON array of CodeQL languages, e.g. '[\"go\",\"python\"]'. Overrides auto-detection."
+        required: false
+        type: string
+        default: ""
+      enable_codeql:
+        description: "Run CodeQL. Languages are detected from the repository unless codeql_languages is set."
+        required: false
+        type: boolean
+        default: true
+      enable_harden_runner:
+        description: "Run step-security/harden-runner in audit mode on public repositories."
+        required: false
+        type: boolean
+        default: true
+      runs_on:
+        description: "Runner label to execute the jobs on."
+        required: false
+        type: string
+        default: "ubuntu-latest"
+
+permissions: {}
+
+jobs:
+  lint-and-sast:
+    name: Lint and SAST
+    runs-on: ${{ inputs.runs_on }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      security-events: write
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner && github.event.repository.private == false }}
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          # Check out the branch head rather than the merge commit so fixes can be committed back.
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+
+      - name: Run MegaLinter
+        uses: oxsecurity/megalinter@15e5b45552097e318c93de385779ce3b1084052c # v10.0.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MEGALINTER_CONFIG: ${{ inputs.megalinter_config }}
+          # Baseline: formatting and linting, plus IaC/code SAST, SCA and secret scanning.
+          # Trivy is deliberately excluded; Grype and Checkov give equivalent coverage.
+          ENABLE_LINTERS: ${{ inputs.enable_linters != '' && format('ACTION_ACTIONLINT,BASH_SHELLCHECK,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,REPOSITORY_CHECKOV,REPOSITORY_GITLEAKS,REPOSITORY_GRYPE,REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,YAML_PRETTIER,{0}', inputs.enable_linters) || 'ACTION_ACTIONLINT,BASH_SHELLCHECK,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,REPOSITORY_CHECKOV,REPOSITORY_GITLEAKS,REPOSITORY_GRYPE,REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,YAML_PRETTIER' }}
+          DISABLE_LINTERS: ${{ inputs.disable_linters }}
+          FILTER_REGEX_EXCLUDE: ${{ inputs.filter_regex_exclude }}
+          VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase != '' && inputs.validate_all_codebase || ((github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main' && 'true') || 'false' }}
+          APPLY_FIXES: ${{ inputs.apply_fixes && 'JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,TERRAFORM_TERRAFORM_FMT,YAML_PRETTIER' || 'none' }}
+          APPLY_FIXES_EVENT: pull_request
+          APPLY_FIXES_MODE: pull_request
+          EMAIL_REPORTER: false
+          REPORT_OUTPUT_FOLDER: megalinter-reports
+          REPORTERS: sarif
+          YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
+
+      - name: Archive MegaLinter reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: megalinter-reports
+          path: |
+            megalinter-reports
+            mega-linter.log
+          if-no-files-found: ignore
+
+      - name: Check for SARIF report
+        id: check_sarif
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          if [ -f "megalinter-reports/megalinter-report.sarif" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload SARIF to the GitHub Security tab
+        if: ${{ !cancelled() && steps.check_sarif.outputs.exists == 'true' }}
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        with:
+          sarif_file: megalinter-reports/megalinter-report.sarif
+
+      - name: Remove report artefacts before committing
+        if: ${{ !cancelled() && inputs.apply_fixes && github.event_name == 'pull_request' }}
+        shell: bash
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" megalinter-reports mega-linter.log 2>/dev/null || true
+          rm -rf megalinter-reports mega-linter.log
+
+      - name: Commit formatting fixes
+        # Skipped for fork pull requests, where the token cannot write to the head branch.
+        if: ${{ !cancelled() && inputs.apply_fixes && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@2988728879704953e739f82ac926d37931c6d01b # v6.1.9
+        with:
+          github_token: ${{ github.token }}
+          pr_title: "Code Quality workflow formatting fixes"
+          pr_body: "Automatic formatting fixes applied by the Modernisation Platform Code Quality workflow."
+
+  dependency-review:
+    name: Dependency Review
+    if: ${{ inputs.enable_dependency_review && github.event_name == 'pull_request' }}
+    runs-on: ${{ inputs.runs_on }}
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner && github.event.repository.private == false }}
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: ${{ inputs.dependency_review_fail_on_severity }}
+          comment-summary-in-pr: on-failure
+
+  codeql-languages:
+    name: Detect CodeQL Languages
+    if: ${{ inputs.enable_codeql }}
+    runs-on: ${{ inputs.runs_on }}
+    permissions:
+      contents: read
+    outputs:
+      languages: ${{ steps.detect.outputs.languages }}
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner && github.event.repository.private == false }}
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Detect languages
+        id: detect
+        env:
+          OVERRIDE: ${{ inputs.codeql_languages }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "$OVERRIDE" ]; then
+            echo "languages=$OVERRIDE" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          languages=()
+          while IFS= read -r file; do
+            case "$file" in
+              *.c|*.cc|*.cpp|*.cxx|*.h|*.hpp|*.hxx) languages+=("c-cpp") ;;
+              *.cs) languages+=("csharp") ;;
+              *.go) languages+=("go") ;;
+              *.java|*.kt|*.kts) languages+=("java-kotlin") ;;
+              *.js|*.jsx|*.mjs|*.cjs|*.ts|*.tsx) languages+=("javascript-typescript") ;;
+              *.py) languages+=("python") ;;
+              *.rb) languages+=("ruby") ;;
+              *.rs) languages+=("rust") ;;
+              *.swift) languages+=("swift") ;;
+            esac
+          done < <(git ls-files)
+          if compgen -G ".github/workflows/*.y*ml" > /dev/null; then
+            languages+=("actions")
+          fi
+          json=$(printf '%s\n' ${languages[@]+"${languages[@]}"} \
+            | jq -R . | jq -sc 'map(select(. != "")) | unique')
+          echo "Detected CodeQL languages: $json"
+          echo "languages=$json" >> "$GITHUB_OUTPUT"
+
+  codeql:
+    name: CodeQL
+    needs: codeql-languages
+    if: ${{ inputs.enable_codeql && needs.codeql-languages.outputs.languages != '[]' }}
+    runs-on: ${{ inputs.runs_on }}
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ${{ fromJSON(needs.codeql-languages.outputs.languages) }}
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner && github.event.repository.private == false }}
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: CodeQL Autobuild
+        uses: github/codeql-action/autobuild@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+
+      - name: Analyse
+        uses: github/codeql-action/analyze@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        with:
+          category: "/language:${{ matrix.language }}"

@@ -29,4 +29,8 @@ RUN curl https://raw.githubusercontent.com/terraform-linters/tflint/master/insta
 
 COPY entrypoint.sh /entrypoint.sh
 COPY tflint-configs /tflint-configs
+
+RUN useradd --create-home --shell /usr/sbin/nologin scanner
+USER scanner
+
 ENTRYPOINT ["/entrypoint.sh"]
