@@ -4,7 +4,7 @@ name: Reusable Code Quality
 # Single, opinionated, reusable workflow providing a baseline of
 # linting, SAST and SCA for all Modernisation Platform repositories.
 
-on:
+"on":
   workflow_call:
     inputs:
       enable_linters:
@@ -84,6 +84,13 @@ jobs:
   lint-and-sast:
     name: Lint and SAST
     runs-on: ${{ inputs.runs_on }}
+    env:
+      BASELINE_LINTERS: >-
+        ACTION_ACTIONLINT,ACTION_ZIZMOR,BASH_SHELLCHECK,DOCKERFILE_HADOLINT,
+        EDITORCONFIG_EDITORCONFIG_CHECKER,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,
+        REPOSITORY_BETTERLEAKS,REPOSITORY_CHECKOV,REPOSITORY_GRYPE,
+        REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,
+        YAML_PRETTIER,YAML_YAMLLINT
     permissions:
       contents: write
       issues: write
@@ -100,6 +107,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
           # Check out the branch head rather than the merge commit so fixes can be committed back.
           ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
@@ -111,14 +119,18 @@ jobs:
           MEGALINTER_CONFIG: ${{ inputs.megalinter_config }}
           # Baseline: formatting and linting, plus IaC/code SAST, SCA and secret scanning.
           # Trivy is deliberately excluded; Grype and Checkov give equivalent coverage.
-          ENABLE_LINTERS: ${{ inputs.enable_linters != '' && format('ACTION_ACTIONLINT,BASH_SHELLCHECK,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,REPOSITORY_BETTERLEAKS,REPOSITORY_CHECKOV,REPOSITORY_GRYPE,REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,YAML_PRETTIER,{0}', inputs.enable_linters) || 'ACTION_ACTIONLINT,BASH_SHELLCHECK,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,REPOSITORY_BETTERLEAKS,REPOSITORY_CHECKOV,REPOSITORY_GRYPE,REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,YAML_PRETTIER' }}
+          ENABLE_LINTERS: ${{ inputs.enable_linters != '' && format('{0},{1}', env.BASELINE_LINTERS, inputs.enable_linters) || env.BASELINE_LINTERS }}
           DISABLE_LINTERS: ${{ inputs.disable_linters }}
           FILTER_REGEX_EXCLUDE: ${{ inputs.filter_regex_exclude }}
           VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase != '' && inputs.validate_all_codebase || ((github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main' && 'true') || 'false' }}
           REPOSITORY_CHECKOV_ARGUMENTS: ${{ inputs.checkov_arguments }}
           REPOSITORY_CHECKOV_CLI_LINT_MODE: ${{ github.event_name == 'pull_request' && 'file' || 'project' }}
+          ACTION_ZIZMOR_UNSECURED_ENV_VARIABLES: GITHUB_TOKEN
+          EDITORCONFIG_EDITORCONFIG_CHECKER_CLI_LINT_MODE: list_of_files
           TERRAFORM_TFLINT_ARGUMENTS: ${{ inputs.tflint_arguments }}
           TERRAFORM_TFLINT_CLI_LINT_MODE: ${{ github.event_name == 'pull_request' && 'list_of_files' || 'project' }}
+          YAML_YAMLLINT_CLI_LINT_MODE: list_of_files
+          YAML_YAMLLINT_DISABLE_ERRORS: true
           APPLY_FIXES: ${{ inputs.apply_fixes && 'JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,TERRAFORM_TERRAFORM_FMT,YAML_PRETTIER' || 'none' }}
           APPLY_FIXES_EVENT: pull_request
           APPLY_FIXES_MODE: pull_request
@@ -186,6 +198,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Dependency Review
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
@@ -210,6 +224,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Detect languages
         id: detect
@@ -266,6 +282,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Initialise CodeQL
         uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
