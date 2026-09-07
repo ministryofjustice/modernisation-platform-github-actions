@@ -4,7 +4,7 @@ name: Reusable Code Quality
 # Single, opinionated, reusable workflow providing a baseline of
 # linting, SAST and SCA for all Modernisation Platform repositories.
 
-on:
+"on":
   workflow_call:
     inputs:
       enable_linters:
@@ -84,6 +84,13 @@ jobs:
   lint-and-sast:
     name: Lint and SAST
     runs-on: ${{ inputs.runs_on }}
+    env:
+      BASELINE_LINTERS: >-
+        ACTION_ACTIONLINT,ACTION_ZIZMOR,BASH_SHELLCHECK,DOCKERFILE_HADOLINT,
+        EDITORCONFIG_EDITORCONFIG_CHECKER,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,
+        REPOSITORY_BETTERLEAKS,REPOSITORY_CHECKOV,REPOSITORY_GRYPE,
+        REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,
+        YAML_PRETTIER,YAML_YAMLLINT
     permissions:
       contents: write
       issues: write
@@ -112,7 +119,7 @@ jobs:
           MEGALINTER_CONFIG: ${{ inputs.megalinter_config }}
           # Baseline: formatting and linting, plus IaC/code SAST, SCA and secret scanning.
           # Trivy is deliberately excluded; Grype and Checkov give equivalent coverage.
-          ENABLE_LINTERS: ${{ inputs.enable_linters != '' && format('ACTION_ACTIONLINT,ACTION_ZIZMOR,BASH_SHELLCHECK,DOCKERFILE_HADOLINT,EDITORCONFIG_EDITORCONFIG_CHECKER,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,REPOSITORY_BETTERLEAKS,REPOSITORY_CHECKOV,REPOSITORY_GRYPE,REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,YAML_PRETTIER,YAML_YAMLLINT,{0}', inputs.enable_linters) || 'ACTION_ACTIONLINT,ACTION_ZIZMOR,BASH_SHELLCHECK,DOCKERFILE_HADOLINT,EDITORCONFIG_EDITORCONFIG_CHECKER,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,REPOSITORY_BETTERLEAKS,REPOSITORY_CHECKOV,REPOSITORY_GRYPE,REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,YAML_PRETTIER,YAML_YAMLLINT' }}
+          ENABLE_LINTERS: ${{ inputs.enable_linters != '' && format('{0},{1}', env.BASELINE_LINTERS, inputs.enable_linters) || env.BASELINE_LINTERS }}
           DISABLE_LINTERS: ${{ inputs.disable_linters }}
           FILTER_REGEX_EXCLUDE: ${{ inputs.filter_regex_exclude }}
           VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase != '' && inputs.validate_all_codebase || ((github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main' && 'true') || 'false' }}
