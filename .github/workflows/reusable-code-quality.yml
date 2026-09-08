@@ -107,7 +107,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          persist-credentials: false
+          # MegaLinter needs a valid credential to "git fetch origin HEAD" when computing the diff.
+          persist-credentials: true
           # Check out the branch head rather than the merge commit so fixes can be committed back.
           ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
