@@ -113,8 +113,30 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
 
+      - name: Cache Grype database
+        id: grype-cache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          # MegaLinter maps this runner directory to /github/home in its container.
+          path: ${{ runner.temp }}/_github_home/.cache/grype
+          # A unique key lets each run save a refreshed database; restore-keys selects the latest one.
+          key: grype-db-v0.116.1-${{ runner.os }}-${{ github.repository }}-${{ github.run_id }}
+          restore-keys: |
+            grype-db-v0.116.1-${{ runner.os }}-${{ github.repository }}-
+
+      - name: Populate Grype database
+        shell: bash
+        run: |
+          mkdir -p "${{ runner.temp }}/_github_home/.cache/grype"
+          docker run --rm \
+            --entrypoint grype \
+            -v "${{ runner.temp }}/_github_home:/github/home" \
+            -e GRYPE_DB_CACHE_DIR=/github/home/.cache/grype \
+            ghcr.io/oxsecurity/megalinter:v10.1.0 \
+            db update
+
       - name: Run MegaLinter
-        uses: oxsecurity/megalinter@15e5b45552097e318c93de385779ce3b1084052c # v10.0.0
+        uses: oxsecurity/megalinter@9949bad031045f366be2467e00e8371a7328a2e2 # v10.1.0
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MEGALINTER_CONFIG: ${{ inputs.megalinter_config }}
@@ -139,6 +161,19 @@ jobs:
           REPORT_OUTPUT_FOLDER: megalinter-reports
           REPORTERS: sarif
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
+
+      - name: Fix Grype database permissions
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" "${{ runner.temp }}/_github_home/.cache/grype"
+
+      - name: Save Grype database cache
+        if: ${{ !cancelled() }}
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ runner.temp }}/_github_home/.cache/grype
+          key: grype-db-v0.116.1-${{ runner.os }}-${{ github.repository }}-${{ github.run_id }}
 
       - name: Archive MegaLinter reports
         if: ${{ !cancelled() }}
