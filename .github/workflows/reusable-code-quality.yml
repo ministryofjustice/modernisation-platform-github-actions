@@ -122,6 +122,8 @@ jobs:
           key: grype-db-v0.116.1-${{ runner.os }}-${{ github.repository }}-${{ github.run_id }}
           restore-keys: |
             grype-db-v0.116.1-${{ runner.os }}-${{ github.repository }}-
+          # Preserve a freshly populated database even when a blocking linter fails later.
+          save-always: true
 
       - name: Populate Grype database
         shell: bash
