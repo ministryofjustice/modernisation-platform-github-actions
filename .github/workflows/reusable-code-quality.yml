@@ -142,6 +142,7 @@ jobs:
           MEGALINTER_CONFIG: ${{ inputs.megalinter_config }}
           # The database was refreshed immediately before MegaLinter; avoid a second download.
           GRYPE_DB_AUTO_UPDATE: false
+          GRYPE_DB_CACHE_DIR: /github/home/.cache/grype
           # Baseline: formatting and linting, plus IaC/code SAST, SCA and secret scanning.
           # Trivy is deliberately excluded; Grype and Checkov give equivalent coverage.
           ENABLE_LINTERS: ${{ inputs.enable_linters != '' && format('{0},{1}', env.BASELINE_LINTERS, inputs.enable_linters) || env.BASELINE_LINTERS }}
