@@ -120,9 +120,9 @@ jobs:
           # MegaLinter maps this runner directory to /github/home in its container.
           path: ${{ runner.temp }}/_github_home/.cache/grype
           # A unique key lets each run save a refreshed database; restore-keys selects the latest one.
-          key: grype-db-v0.116.1-${{ runner.os }}-${{ github.repository }}-${{ github.run_id }}
+          key: grype-db-v0.118.0-${{ runner.os }}-${{ github.repository }}-${{ github.run_id }}
           restore-keys: |
-            grype-db-v0.116.1-${{ runner.os }}-${{ github.repository }}-
+            grype-db-v0.118.0-${{ runner.os }}-${{ github.repository }}-
 
       - name: Populate Grype database
         shell: bash
@@ -140,6 +140,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MEGALINTER_CONFIG: ${{ inputs.megalinter_config }}
+          # The database was refreshed immediately before MegaLinter; avoid a second download.
+          GRYPE_DB_AUTO_UPDATE: false
+          GRYPE_DB_CACHE_DIR: /github/home/.cache/grype
           # Baseline: formatting and linting, plus IaC/code SAST, SCA and secret scanning.
           # Trivy is deliberately excluded; Grype and Checkov give equivalent coverage.
           ENABLE_LINTERS: ${{ inputs.enable_linters != '' && format('{0},{1}', env.BASELINE_LINTERS, inputs.enable_linters) || env.BASELINE_LINTERS }}
@@ -173,7 +176,7 @@ jobs:
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ runner.temp }}/_github_home/.cache/grype
-          key: grype-db-v0.116.1-${{ runner.os }}-${{ github.repository }}-${{ github.run_id }}
+          key: grype-db-v0.118.0-${{ runner.os }}-${{ github.repository }}-${{ github.run_id }}
 
       - name: Archive MegaLinter reports
         if: ${{ !cancelled() }}
