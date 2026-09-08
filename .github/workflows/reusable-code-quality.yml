@@ -113,6 +113,16 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
 
+      - name: Cache Grype database
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          # MegaLinter maps this runner directory to /github/home in its container.
+          path: ${{ runner.temp }}/_github_home/.cache/grype
+          # A unique key lets successful runs save refreshed databases; restore-keys selects the latest one.
+          key: grype-db-v0.116.1-${{ runner.os }}-${{ github.repository }}-${{ github.run_id }}
+          restore-keys: |
+            grype-db-v0.116.1-${{ runner.os }}-${{ github.repository }}-
+
       - name: Run MegaLinter
         uses: oxsecurity/megalinter@15e5b45552097e318c93de385779ce3b1084052c # v10.0.0
         env:
