@@ -123,6 +123,17 @@ jobs:
           restore-keys: |
             grype-db-v0.116.1-${{ runner.os }}-${{ github.repository }}-
 
+      - name: Populate Grype database
+        shell: bash
+        run: |
+          mkdir -p "${{ runner.temp }}/_github_home/.cache/grype"
+          docker run --rm \
+            --entrypoint grype \
+            -v "${{ runner.temp }}/_github_home:/github/home" \
+            -e GRYPE_DB_CACHE_DIR=/github/home/.cache/grype \
+            ghcr.io/oxsecurity/megalinter:v10.0.0 \
+            db update
+
       - name: Run MegaLinter
         uses: oxsecurity/megalinter@15e5b45552097e318c93de385779ce3b1084052c # v10.0.0
         env:
