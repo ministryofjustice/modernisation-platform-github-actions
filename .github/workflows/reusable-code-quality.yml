@@ -162,6 +162,12 @@ jobs:
           REPORTERS: sarif
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
 
+      - name: Fix Grype database permissions
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" "${{ runner.temp }}/_github_home/.cache/grype"
+
       - name: Save Grype database cache
         if: ${{ !cancelled() }}
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
