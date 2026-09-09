@@ -158,7 +158,7 @@ jobs:
           YAML_YAMLLINT_CLI_LINT_MODE: list_of_files
           YAML_YAMLLINT_DISABLE_ERRORS: true
           APPLY_FIXES: ${{ inputs.apply_fixes && 'JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,TERRAFORM_TERRAFORM_FMT,YAML_PRETTIER' || 'none' }}
-          APPLY_FIXES_EVENT: pull_request
+          APPLY_FIXES_EVENT: ${{ github.event_name == 'schedule' && 'all' || 'pull_request' }}
           APPLY_FIXES_MODE: pull_request
           EMAIL_REPORTER: false
           REPORT_OUTPUT_FOLDER: megalinter-reports
@@ -206,15 +206,15 @@ jobs:
           sarif_file: megalinter-reports/megalinter-report.sarif
 
       - name: Remove report artefacts before committing
-        if: ${{ !cancelled() && inputs.apply_fixes && github.event_name == 'pull_request' }}
+        if: ${{ !cancelled() && inputs.apply_fixes && (github.event_name == 'pull_request' || github.event_name == 'schedule') }}
         shell: bash
         run: |
           sudo chown -R "$(id -u):$(id -g)" megalinter-reports mega-linter.log 2>/dev/null || true
           rm -rf megalinter-reports mega-linter.log
 
       - name: Commit formatting fixes
-        # Skipped for fork pull requests, where the token cannot write to the head branch.
-        if: ${{ !cancelled() && inputs.apply_fixes && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        # Scheduled runs commit from main into a new branch and open a pull request.
+        if: ${{ !cancelled() && inputs.apply_fixes && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'schedule' && github.ref == 'refs/heads/main')) }}
         uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@2988728879704953e739f82ac926d37931c6d01b # v6.1.9
         with:
           github_token: ${{ github.token }}
