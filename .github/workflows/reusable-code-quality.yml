@@ -113,6 +113,13 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
 
+      - name: Free disk space
+        # Removes unused preinstalled toolchains to avoid "no space left on device" downloading the Grype DB.
+        shell: bash
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - name: Cache Grype database
         id: grype-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -125,6 +132,9 @@ jobs:
             grype-db-v0.118.0-${{ runner.os }}-${{ github.repository }}-
 
       - name: Populate Grype database
+        # Skip when the restore-key fallback already found a cached DB, to avoid a redundant
+        # download needing space for both the old and new copies at once.
+        if: steps.grype-cache.outputs.cache-matched-key == ''
         shell: bash
         run: |
           mkdir -p "${{ runner.temp }}/_github_home/.cache/grype"
