@@ -155,6 +155,8 @@ jobs:
           EDITORCONFIG_EDITORCONFIG_CHECKER_CLI_LINT_MODE: list_of_files
           TERRAFORM_TFLINT_ARGUMENTS: ${{ inputs.tflint_arguments }}
           TERRAFORM_TFLINT_CLI_LINT_MODE: ${{ github.event_name == 'pull_request' && 'list_of_files' || 'project' }}
+          # tflint's plugin installer treats the masked GITHUB_TOKEN placeholder as a real credential and gets a 401.
+          TERRAFORM_TFLINT_UNSECURED_ENV_VARIABLES: GITHUB_TOKEN
           YAML_YAMLLINT_CLI_LINT_MODE: list_of_files
           YAML_YAMLLINT_DISABLE_ERRORS: true
           APPLY_FIXES: ${{ inputs.apply_fixes && 'JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,TERRAFORM_TERRAFORM_FMT,YAML_PRETTIER' || 'none' }}
