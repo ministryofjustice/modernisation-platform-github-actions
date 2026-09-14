@@ -113,8 +113,15 @@ run_tflint() {
 
     if [[ "${directory}" != *"templates"* && -d "${terraform_working_dir}" ]]; then
       if [[ -n "$INPUT_TFLINT_EXCLUDE" ]]; then
-        readarray -d , -t tflint_exclusions <<<"$INPUT_TFLINT_EXCLUDE"
-        tflint_exclusions_list=("${tflint_exclusions[@]/#/--disable-rule=}")
+        IFS=',' read -r -a tflint_exclusions <<<"$INPUT_TFLINT_EXCLUDE"
+        tflint_exclusions_list=()
+        for tflint_exclusion in "${tflint_exclusions[@]}"; do
+          tflint_exclusion="${tflint_exclusion#"${tflint_exclusion%%[![:space:]]*}"}"
+          tflint_exclusion="${tflint_exclusion%"${tflint_exclusion##*[![:space:]]}"}"
+          if [[ -n "$tflint_exclusion" ]]; then
+            tflint_exclusions_list+=("--disable-rule=${tflint_exclusion}")
+          fi
+        done
         run_tflint_command --config "$tflint_config" "${tflint_exclusions_list[@]}" --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
       else
         run_tflint_command --config "$tflint_config" --chdir "${terraform_working_dir}" --call-module-type "${INPUT_TFLINT_CALL_MODULE_TYPE}" 2>&1
