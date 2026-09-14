@@ -33,6 +33,8 @@ cleanup() {
 
 trap cleanup EXIT
 
+export HOME=/home/scanner
+
 # see https://github.com/actions/runner/issues/2033
 git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
