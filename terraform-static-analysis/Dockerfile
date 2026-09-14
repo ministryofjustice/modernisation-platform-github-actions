@@ -36,7 +36,8 @@ RUN curl -sSLo /tmp/tflint.zip "https://github.com/terraform-linters/tflint/rele
 COPY entrypoint.sh /entrypoint.sh
 COPY tflint-configs /tflint-configs
 
-RUN useradd --uid 10001 --create-home --shell /usr/sbin/nologin scanner
-USER 10001
+# hadolint ignore=DL3066
+RUN useradd --create-home --shell /usr/sbin/nologin scanner
+USER scanner
 
 ENTRYPOINT ["/entrypoint.sh"]
