@@ -1,7 +1,8 @@
 FROM golang:1.27-bookworm
 
 #Install Checkov
-RUN apt-get update && apt-get install -y \
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends \
   python3 \
   python3-pip \
   python3-venv \
@@ -21,8 +22,9 @@ RUN python --version \
  && python -c 'import sys; assert sys.version_info >= (3, 10), f"Python 3.10+ required, got {sys.version}"'
 
 COPY requirements.txt /requirements.txt
-RUN pip install --upgrade pip setuptools \
- && pip install -r /requirements.txt
+# hadolint ignore=DL3013
+RUN pip install --no-cache-dir --upgrade pip setuptools \
+ && pip install --no-cache-dir -r /requirements.txt
 
 #Install tflint
 # install_linux.sh was removed upstream (terraform-linters/tflint#2607); install a pinned release binary instead.
@@ -34,7 +36,7 @@ RUN curl -sSLo /tmp/tflint.zip "https://github.com/terraform-linters/tflint/rele
 COPY entrypoint.sh /entrypoint.sh
 COPY tflint-configs /tflint-configs
 
-RUN useradd --create-home --shell /usr/sbin/nologin scanner
-USER scanner
+RUN useradd --uid 10001 --create-home --shell /usr/sbin/nologin scanner
+USER 10001
 
 ENTRYPOINT ["/entrypoint.sh"]
