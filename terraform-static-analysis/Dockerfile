@@ -25,7 +25,11 @@ RUN pip install --upgrade pip setuptools \
  && pip install -r /requirements.txt
 
 #Install tflint
-RUN curl https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+# install_linux.sh was removed upstream (terraform-linters/tflint#2607); install a pinned release binary instead.
+ARG TFLINT_VERSION=v0.64.0
+RUN curl -sSLo /tmp/tflint.zip "https://github.com/terraform-linters/tflint/releases/download/${TFLINT_VERSION}/tflint_linux_amd64.zip" \
+ && unzip /tmp/tflint.zip -d /usr/local/bin \
+ && rm /tmp/tflint.zip
 
 COPY entrypoint.sh /entrypoint.sh
 COPY tflint-configs /tflint-configs
