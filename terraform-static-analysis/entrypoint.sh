@@ -67,9 +67,9 @@ run_checkov() {
 
     if [[ "${directory}" != *"templates"* && -d "${terraform_working_dir}" ]]; then
       if [[ -n "$INPUT_CHECKOV_EXCLUDE" ]]; then
-        checkov --quiet -d "$terraform_working_dir" --skip-check "${INPUT_CHECKOV_EXCLUDE}" --download-external-modules "${INPUT_CHECKOV_EXTERNAL_MODULES}" 2>&1
+        checkov --quiet -d "$terraform_working_dir" --framework terraform --skip-check "${INPUT_CHECKOV_EXCLUDE}" --download-external-modules "${INPUT_CHECKOV_EXTERNAL_MODULES}" 2>&1
       else
-        checkov --quiet -d "$terraform_working_dir" --download-external-modules "${INPUT_CHECKOV_EXTERNAL_MODULES}" 2>&1
+        checkov --quiet -d "$terraform_working_dir" --framework terraform --download-external-modules "${INPUT_CHECKOV_EXTERNAL_MODULES}" 2>&1
       fi
       checkov_exitcode+=$?
       echo "checkov_exitcode=${checkov_exitcode}"
