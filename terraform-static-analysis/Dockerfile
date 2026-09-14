@@ -38,6 +38,7 @@ COPY tflint-configs /tflint-configs
 
 # hadolint ignore=DL3066
 RUN useradd --create-home --shell /usr/sbin/nologin scanner
+# hadolint ignore=DL3066
 USER scanner
 
 ENTRYPOINT ["/entrypoint.sh"]
