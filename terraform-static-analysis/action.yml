@@ -1,3 +1,4 @@
+---
 # action.yml
 name: "Terraform security scan"
 description: "Scan your terraform code with security tools such as Checkov and TFLint. The action will comment on pull requests with the results of the scan if 'comment_on_pr' is set to true."
