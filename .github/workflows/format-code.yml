@@ -5,7 +5,7 @@ name: "Format Code: ensure code formatting guidelines are met"
     types: [opened, edited, reopened, synchronize]
 
 permissions: read-all
-  
+
 jobs:
   format-code:
     permissions:
@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true
 
       - name: Run Format Code Action
         uses: ministryofjustice/modernisation-platform-github-actions/format-code@d467c7fb1bbeb73162ea736ca13adc8ba2ae74f8 # v6.2.5
