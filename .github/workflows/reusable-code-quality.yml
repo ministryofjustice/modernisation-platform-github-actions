@@ -230,7 +230,7 @@ jobs:
 
       - name: Upload SARIF to the GitHub Security tab
         if: ${{ !cancelled() && steps.check_sarif.outputs.exists == 'true' }}
-        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           sarif_file: megalinter-reports/megalinter-report.sarif
 
@@ -244,7 +244,7 @@ jobs:
       - name: Commit formatting fixes
         # Scheduled runs commit from main into a new branch and open a pull request.
         if: ${{ !cancelled() && inputs.apply_fixes && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'schedule' && github.ref == 'refs/heads/main')) }}
-        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@2988728879704953e739f82ac926d37931c6d01b # v6.1.9
+        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@d467c7fb1bbeb73162ea736ca13adc8ba2ae74f8 # v6.2.5
         with:
           github_token: ${{ github.token }}
           pr_title: "Code Quality workflow formatting fixes"
@@ -354,7 +354,7 @@ jobs:
           persist-credentials: false
 
       - name: Initialise CodeQL
-        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           languages: ${{ matrix.language }}
 
@@ -362,6 +362,6 @@ jobs:
         uses: github/codeql-action/autobuild@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
 
       - name: Analyse
-        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           category: "/language:${{ matrix.language }}"
