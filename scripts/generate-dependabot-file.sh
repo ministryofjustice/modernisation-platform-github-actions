@@ -21,6 +21,7 @@ fi
 echo "Generating dependabot.yml..."
 
 cat > "$dependabot_file" << 'EOF'
+---
 # This file is auto-generated, do not manually amend.
 # scripts/generate-dependabot-file.sh
 
@@ -37,6 +38,10 @@ cat >> "$dependabot_file" << EOF
       interval: "daily"
     cooldown:
       default-days: $dependabot_cooldown_default_days
+    groups:
+      codeql:
+        patterns:
+          - "github/codeql-action/*"
 EOF
 
 # Bundler (only if Gemfile.lock is found at root)

@@ -1,3 +1,4 @@
+---
 # This file is auto-generated, do not manually amend.
 # scripts/generate-dependabot-file.sh
 
@@ -10,6 +11,10 @@ updates:
       interval: "daily"
     cooldown:
       default-days: 7
+    groups:
+      codeql:
+        patterns:
+          - "github/codeql-action/*"
   - package-ecosystem: "docker"
     directories:
       - "/terraform-static-analysis/**/*"

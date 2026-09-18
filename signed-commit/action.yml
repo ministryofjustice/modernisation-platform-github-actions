@@ -1,3 +1,4 @@
+---
 name: "Signed Commit Action"
 description: "Creates a signed commit using GitHub GraphQL and optionally creates a PR"
 author: "Aaron Robinson"
@@ -66,34 +67,34 @@ runs:
         else
           github_repo="${GITHUB_REPOSITORY}"
         fi
-        
+
         # Debug output
         echo "github_repo: $github_repo"
         echo "GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}"
-        
+
         # Fallback if github_repo is still empty
         if [ -z "$github_repo" ]; then
           echo "⚠️ github_repo is empty. Please ensure GITHUB_REPOSITORY or remote_repository is set."
           exit 1
         fi
-        
+
         # Get current branch name
         branch_name="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
-        
+
         # Fallback to remote HEAD if symbolic-ref fails
         if [ -z "$branch_name" ]; then
           echo "⚠️ Could not determine branch from symbolic-ref, trying remote HEAD..."
           branch_name="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
         fi
-        
+
         if [ -z "$branch_name" ]; then
           echo "❌ Could not determine branch name"
           exit 1
         fi
-        
+
         echo "✅ Using branch: $branch_name"
         echo "branch_name=$branch_name" >> $GITHUB_ENV
-        
+
         # Set and validate GitHub token
         GITHUB_TOKEN="${{ inputs.github_token }}"
         if [ -z "$GITHUB_TOKEN" ]; then
@@ -103,15 +104,15 @@ runs:
           echo "❌ GITHUB_TOKEN is not set"
           exit 1
         fi
-        
+
         # Debug API call
         api_url="https://api.github.com/repos/${github_repo}/git/refs/heads/${branch_name}"
         echo "Calling GitHub API: $api_url"
-        
+
         commit_oid=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
           -H "Content-Type: application/json" \
           "$api_url" | jq -r '.object.sha')
-        
+
         if [ -z "$commit_oid" ] || [ "$commit_oid" = "null" ]; then
           echo "❌ Failed to fetch commit SHA from GitHub API"
           echo "🔍 Response:"
@@ -120,7 +121,7 @@ runs:
             "$api_url"
           exit 1
         fi
-        
+
         echo "✅ Commit OID resolved: $commit_oid"
         echo "commit_oid=$commit_oid" >> $GITHUB_ENV
       shell: bash
@@ -153,7 +154,7 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
         echo "branch_name=${GITHUB_HEAD_REF}" >> $GITHUB_ENV
-        
+
         # Re-fetch commit OID for the PR branch
         if [ -n "${{ inputs.remote_repository_path }}" ]; then
           cd "${{ inputs.remote_repository_path }}"
@@ -161,23 +162,23 @@ runs:
         else
           github_repo="${GITHUB_REPOSITORY}"
         fi
-        
+
         GITHUB_TOKEN="${{ inputs.github_token }}"
         if [ -z "$GITHUB_TOKEN" ]; then
           GITHUB_TOKEN="${TERRAFORM_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
         fi
-        
+
         echo "🔄 Fetching commit OID for PR branch: ${GITHUB_HEAD_REF}"
         api_url="https://api.github.com/repos/${github_repo}/git/refs/heads/${GITHUB_HEAD_REF}"
         pr_commit_oid=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
           -H "Content-Type: application/json" \
           "$api_url" | jq -r '.object.sha')
-        
+
         if [ -z "$pr_commit_oid" ] || [ "$pr_commit_oid" = "null" ]; then
           echo "❌ Failed to fetch commit SHA for PR branch"
           exit 1
         fi
-        
+
         echo "✅ PR branch commit OID: $pr_commit_oid"
         echo "commit_oid=$pr_commit_oid" >> $GITHUB_ENV
       shell: bash
