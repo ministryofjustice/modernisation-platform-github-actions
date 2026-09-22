@@ -42,6 +42,11 @@ name: Reusable Code Quality
         required: false
         type: string
         default: ""
+      action_actionlint_filter_regex_exclude:
+        description: "Regex of paths to exclude from Actionlint."
+        required: false
+        type: string
+        default: ""
       apply_fixes:
         description: "Commit safe formatting fixes back to the pull request branch."
         required: false
@@ -179,6 +184,7 @@ jobs:
           REPOSITORY_CHECKOV_ARGUMENTS: ${{ inputs.checkov_arguments }}
           REPOSITORY_CHECKOV_CLI_LINT_MODE: ${{ github.event_name == 'pull_request' && 'file' || 'project' }}
           ACTION_ZIZMOR_UNSECURED_ENV_VARIABLES: GITHUB_TOKEN
+          ACTION_ACTIONLINT_FILTER_REGEX_EXCLUDE: ${{ inputs.action_actionlint_filter_regex_exclude }}
           EDITORCONFIG_EDITORCONFIG_CHECKER_CLI_LINT_MODE: list_of_files
           TERRAFORM_TFLINT_ARGUMENTS: ${{ inputs.tflint_arguments }}
           TERRAFORM_TFLINT_CLI_LINT_MODE: ${{ github.event_name == 'pull_request' && 'list_of_files' || 'project' }}
