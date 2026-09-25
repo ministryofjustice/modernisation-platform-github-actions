@@ -82,6 +82,11 @@ name: Reusable Code Quality
         required: false
         type: string
         default: "ubuntu-latest"
+      free_disk_space:
+        description: "Remove unused runner toolchains to provide additional disk space before MegaLinter."
+        required: false
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -120,6 +125,7 @@ jobs:
 
       - name: Free disk space
         # Removes unused preinstalled toolchains to avoid "no space left on device" downloading the Grype DB.
+        if: ${{ inputs.free_disk_space }}
         shell: bash
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
