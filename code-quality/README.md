@@ -20,12 +20,24 @@ request, including the conventional GitHub Actions `on:` key that Yamllint's YAM
 Findings are uploaded as SARIF to the repository's GitHub Security tab, and the full MegaLinter
 report is attached to the run as an artifact.
 
-On pull requests, MegaLinter runs every baseline linter, including Checkov and TFLint, only against
-the files changed by that pull request. Checkov uses per-file mode so pull requests without IaC
-changes do not fail. By default, pushes to `main` and scheduled runs scan the full project. Manual
-dispatches and other events scan changed files unless the caller sets `validate_all_codebase` to
-`true`. This keeps unrelated application-directory findings out of pull-request runs while allowing
-scheduled full-codebase scans.
+On pull requests, most file-based MegaLinter checks run against files changed by the pull request.
+Checkov uses per-file mode so pull requests without IaC changes do not fail. Betterleaks is an
+exception: it runs in project mode, and `VALIDATE_ALL_CODEBASE: false` does not limit it to changed
+files. By default, pushes to `main` and scheduled runs scan the full project; manual dispatches and
+other events scan changed files unless the caller sets `validate_all_codebase` to `true`.
+
+### Betterleaks and pull requests
+
+Betterleaks is enabled in the baseline. `REPOSITORY_BETTERLEAKS_PR_COMMITS_SCAN` defaults to
+`false` and is not currently set by this workflow, so Betterleaks scans the checked-out project on
+pull requests even when other linters use changed-file validation. This means an existing finding
+can still block an unrelated pull request.
+
+To limit Betterleaks to pull-request commits, set
+`REPOSITORY_BETTERLEAKS_PR_COMMITS_SCAN: true` for pull-request runs. MegaLinter supports this on
+GitHub Actions when the checkout has full history. This workflow already uses `fetch-depth: 0`, but
+does not currently enable the setting. See MegaLinter's [Betterleaks PR scanning documentation](https://megalinter.io/10/descriptors/repository_betterleaks/#scan-only-pull-request-commits)
+for details.
 
 Trivy is deliberately not part of the baseline. Grype covers dependency vulnerabilities and Checkov
 covers IaC misconfiguration.
