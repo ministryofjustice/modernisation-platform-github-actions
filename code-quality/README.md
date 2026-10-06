@@ -22,19 +22,21 @@ report is attached to the run as an artifact.
 
 On pull requests, MegaLinter runs every baseline linter, including Checkov and TFLint, only against
 the files changed by that pull request. Checkov uses per-file mode so pull requests without IaC
-changes do not fail. Scheduled and manually dispatched runs use full project scans, so existing
-findings in other teams' application directories do not appear on a developer's pull request.
+changes do not fail. By default, pushes to `main` and scheduled runs scan the full project. Manual
+dispatches and other events scan changed files unless the caller sets `validate_all_codebase` to
+`true`. This keeps unrelated application-directory findings out of pull-request runs while allowing
+scheduled full-codebase scans.
 
 Trivy is deliberately not part of the baseline. Grype covers dependency vulnerabilities and Checkov
 covers IaC misconfiguration.
 
 ### Why MegaLinter rather than Super-Linter
 
-Super-Linter is lint-only: it bundles no SAST, SCA or secret scanning, so it can cover one of the
-three things this workflow needs to provide. It is also sequential rather than parallel, has fewer
-linters, limited auto-fix, and no aggregated SARIF or pull request comment reporters. Its
-advantages are that it is GitHub-maintained and MIT licensed, against MegaLinter's AGPL-3.0; using
-an AGPL tool as a CI step places no obligation on the code being scanned.
+Super-Linter is another option: current versions run checks in parallel, include security-focused
+tools such as Checkov, Trivy, Gitleaks and zizmor, and can post pull request summary comments. This
+workflow uses MegaLinter's SARIF reporter, which aggregates results from SARIF-capable linters, and
+its integration with the `signed-commit` action for formatter fixes. Super-Linter is MIT-licensed;
+MegaLinter is AGPL-3.0.
 
 ### Why the `all` MegaLinter image
 
@@ -45,10 +47,11 @@ cost is a larger image pull, not reduced capability.
 
 ### Automatic fixes
 
-On pull requests the workflow applies formatter-only fixes and commits them back to the branch as a
-signed commit. Only `JSON_PRETTIER`, `MARKDOWN_MARKDOWNLINT`, `TERRAFORM_TERRAFORM_FMT` and
-`YAML_PRETTIER` are permitted to write, so no logic-changing linter can rewrite code. Set
-`apply_fixes: false` to report only.
+With `apply_fixes: true`, the workflow applies formatter-only fixes on pull requests and scheduled
+runs. Pull-request fixes are committed to the same-repository branch as a signed commit; scheduled
+fixes are committed to a branch and raised as a pull request. Only `JSON_PRETTIER`,
+`MARKDOWN_MARKDOWNLINT`, `TERRAFORM_TERRAFORM_FMT` and `YAML_PRETTIER` are permitted to write, so no
+logic-changing linter can rewrite code. Set `apply_fixes: false` to report only.
 
 YAML files under `.github/` are excluded from Prettier fixes, matching the existing `format-code`
 action and avoiding workflow file changes from the auto-fix commit path.
@@ -120,22 +123,24 @@ jobs:
 
 ## Inputs
 
-| Name                                 | Default         | Description                                                                              |
-| ------------------------------------ | --------------- | ---------------------------------------------------------------------------------------- |
-| `enable_linters`                     | `""`            | Comma separated linters to add to the baseline.                                          |
-| `disable_linters`                    | `""`            | Comma separated linters to remove from the baseline.                                     |
-| `filter_regex_exclude`               | `""`            | Regex of paths to exclude from linting and SAST.                                         |
-| `validate_all_codebase`              | `""`            | `true`/`false`. Defaults to full scans on `main` and schedules, changed files otherwise. |
-| `megalinter_config`                  | `""`            | Path to a repository specific `.mega-linter.yml`.                                        |
-| `checkov_arguments`                  | `""`            | Additional Checkov CLI arguments.                                                        |
-| `tflint_arguments`                   | `""`            | Additional tflint CLI arguments.                                                         |
-| `apply_fixes`                        | `true`          | Commit safe formatting fixes back to the pull request branch.                            |
-| `enable_dependency_review`           | `true`          | Run dependency review on pull requests.                                                  |
-| `dependency_review_fail_on_severity` | `high`          | `low`, `moderate`, `high` or `critical`.                                                 |
-| `codeql_languages`                   | `""`            | JSON array of languages, e.g. `'["go","python"]'`. Overrides auto-detection.             |
-| `enable_codeql`                      | `true`          | Run CodeQL against the detected languages.                                               |
-| `enable_harden_runner`               | `true`          | Run harden-runner in audit mode on public repositories.                                  |
-| `runs_on`                            | `ubuntu-latest` | Runner label.                                                                            |
+| Name                                     | Default         | Description                                                                                        |
+| ---------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------- |
+| `enable_linters`                         | `""`            | Comma separated linters to add to the baseline.                                                    |
+| `disable_linters`                        | `""`            | Comma separated linters to remove from the baseline.                                               |
+| `filter_regex_exclude`                   | `""`            | Regex of paths to exclude from linting and SAST.                                                   |
+| `validate_all_codebase`                  | `""`            | `true`/`false`. Defaults to full scans on pushes to `main` and schedules; changed files otherwise. |
+| `megalinter_config`                      | `""`            | Path to a repository specific `.mega-linter.yml`.                                                  |
+| `checkov_arguments`                      | `""`            | Additional Checkov CLI arguments.                                                                  |
+| `tflint_arguments`                       | `""`            | Additional tflint CLI arguments.                                                                   |
+| `action_actionlint_filter_regex_exclude` | `""`            | Regex of paths to exclude from Actionlint.                                                         |
+| `apply_fixes`                            | `true`          | Apply safe formatter fixes on pull requests and scheduled runs.                                    |
+| `enable_dependency_review`               | `true`          | Run dependency review on pull requests.                                                            |
+| `dependency_review_fail_on_severity`     | `high`          | `low`, `moderate`, `high` or `critical`.                                                           |
+| `codeql_languages`                       | `""`            | JSON array of languages, e.g. `'["go","python"]'`. Overrides auto-detection.                       |
+| `enable_codeql`                          | `true`          | Run CodeQL against the detected languages.                                                         |
+| `enable_harden_runner`                   | `true`          | Run harden-runner in audit mode on public repositories.                                            |
+| `runs_on`                                | `ubuntu-latest` | Runner label.                                                                                      |
+| `free_disk_space`                        | `false`         | Remove unused runner toolchains before MegaLinter to provide more disk space.                      |
 
 ## Permissions
 
