@@ -185,6 +185,7 @@ jobs:
           # Trivy is deliberately excluded; Grype and Checkov give equivalent coverage.
           ENABLE_LINTERS: ${{ inputs.enable_linters != '' && format('{0},{1}', env.BASELINE_LINTERS, inputs.enable_linters) || env.BASELINE_LINTERS }}
           DISABLE_LINTERS: ${{ inputs.disable_linters }}
+          ENABLE_DISABLE_LINTERS_PRIORITY: DISABLE
           DISABLE_ERRORS_LINTERS: ${{ github.event_name == 'pull_request' && 'REPOSITORY_GRYPE' || '' }}
           FILTER_REGEX_EXCLUDE: ${{ inputs.filter_regex_exclude }}
           VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase != '' && inputs.validate_all_codebase || ((github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main' && 'true') || 'false' }}
