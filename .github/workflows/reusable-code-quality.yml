@@ -102,6 +102,7 @@ jobs:
         REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,
         YAML_PRETTIER,YAML_YAMLLINT
     permissions:
+      actions: read
       contents: write
       issues: write
       pull-requests: write
