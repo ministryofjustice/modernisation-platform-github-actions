@@ -245,25 +245,13 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Fetch PR merge ref for SARIF upload
-        id: fetch_pr_merge
-        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.check_sarif.outputs.exists == 'true' }}
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch --no-tags origin \
-            "+refs/pull/${PR_NUMBER}/merge:refs/remotes/origin/pull/${PR_NUMBER}/merge"
-          echo "sha=$(git rev-parse "refs/remotes/origin/pull/${PR_NUMBER}/merge")" >> "$GITHUB_OUTPUT"
-
       - name: Upload SARIF to the GitHub Security tab
         if: ${{ !cancelled() && steps.check_sarif.outputs.exists == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           sarif_file: megalinter-reports/megalinter-report.sarif
-          ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/merge', github.event.pull_request.number) || github.ref }}
-          sha: ${{ steps.fetch_pr_merge.outputs.sha || github.sha }}
+          ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/head', github.event.pull_request.number) || github.ref }}
+          sha: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Remove report artefacts before committing
         if: ${{ !cancelled() && inputs.apply_fixes && (github.event_name == 'pull_request' || github.event_name == 'schedule') }}
