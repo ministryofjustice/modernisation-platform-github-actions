@@ -263,7 +263,7 @@ jobs:
       - name: Commit formatting fixes
         # Scheduled runs commit from main into a new branch and open a pull request.
         if: ${{ !cancelled() && inputs.apply_fixes && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'schedule' && github.ref == 'refs/heads/main')) }}
-        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@b70a7dc60395eb3df40beacbf221fcee459b4c01 # v6.2.8
+        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@b9151ad79209d53d7f738430aa6868c5b7589237 # v6.2.9
         with:
           github_token: ${{ github.token }}
           pr_title: "Code Quality workflow formatting fixes"
