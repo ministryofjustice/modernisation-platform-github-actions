@@ -239,9 +239,11 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         run: |
-          if [ -f "megalinter-reports/megalinter-report.sarif" ]; then
+          SARIF_FILE="megalinter-reports/megalinter-report.sarif"
+          if [ -f "$SARIF_FILE" ] && jq -e '(.runs | type) == "array" and (.runs | length) > 0' "$SARIF_FILE" >/dev/null; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
+            echo "::warning::Skipping SARIF upload because no valid report with runs was generated"
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
