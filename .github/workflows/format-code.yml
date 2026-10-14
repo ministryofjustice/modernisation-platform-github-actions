@@ -19,7 +19,7 @@ jobs:
           persist-credentials: true
 
       - name: Run Format Code Action
-        uses: ministryofjustice/modernisation-platform-github-actions/format-code@b9151ad79209d53d7f738430aa6868c5b7589237 # v6.2.9
+        uses: ministryofjustice/modernisation-platform-github-actions/format-code@4763c6d53a69bf2add0426f9f5b9b1d437abb8a7 # v6.2.10
         with:
           ignore_files: "README.md"
 
