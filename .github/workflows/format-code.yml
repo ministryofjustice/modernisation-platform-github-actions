@@ -24,7 +24,7 @@ jobs:
           ignore_files: "README.md"
 
       - name: Run Signed Commit Action
-        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@b9151ad79209d53d7f738430aa6868c5b7589237 # v6.2.9
+        uses: ministryofjustice/modernisation-platform-github-actions/signed-commit@4763c6d53a69bf2add0426f9f5b9b1d437abb8a7 # v6.2.10
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_title: "GitHub Actions Code Formatter workflow"
