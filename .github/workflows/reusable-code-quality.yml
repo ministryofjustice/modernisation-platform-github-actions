@@ -195,9 +195,6 @@ jobs:
           EDITORCONFIG_EDITORCONFIG_CHECKER_CLI_LINT_MODE: list_of_files
           FILTER_REGEX_EXCLUDE: ${{ inputs.filter_regex_exclude }}
           DISABLE_ERRORS_LINTERS: ${{ github.event_name == 'pull_request' && 'REPOSITORY_GRYPE' || '' }}
-          SARIF_REPORTER: true
-          YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
-          REPORTERS_MARKDOWN_TYPE: simple
 
       - name: Fix Grype database permissions
         if: ${{ !cancelled() }}
