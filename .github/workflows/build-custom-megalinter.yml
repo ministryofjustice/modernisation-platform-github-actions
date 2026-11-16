@@ -1,9 +1,9 @@
 ---
 name: Build Custom MegaLinter
 
-# Builds and publishes the custom MegaLinter flavor containing the baseline linters
-# for the Modernisation Platform, excluding only SEMGREP which causes disk space issues.
-# This reduces disk space requirements while maintaining security and code quality checks.
+# Builds and publishes the custom MegaLinter flavor containing the Modernisation Platform baseline linters
+# for linting, SAST, secrets scanning, and SCA. This reduces disk space requirements while maintaining
+# comprehensive security and code quality checks.
 
 "on":
   workflow_dispatch:
@@ -74,7 +74,7 @@ jobs:
           file: flavors/custom-builder/Dockerfile
           build-args: |
             MEGALINTER_VERSION=${{ steps.version.outputs.version }}
-            CUSTOM_LINTERS=ACTION_ACTIONLINT,ACTION_ZIZMOR,BASH_SHELLCHECK,DOCKERFILE_HADOLINT,EDITORCONFIG_EDITORCONFIG_CHECKER,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,REPOSITORY_BETTERLEAKS,REPOSITORY_CHECKOV,REPOSITORY_GRYPE,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,YAML_PRETTIER,YAML_YAMLLINT
+            CUSTOM_LINTERS=ACTION_ACTIONLINT,ACTION_ZIZMOR,BASH_SHELLCHECK,DOCKERFILE_HADOLINT,EDITORCONFIG_EDITORCONFIG_CHECKER,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,REPOSITORY_BETTERLEAKS,REPOSITORY_CHECKOV,REPOSITORY_GRYPE,REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,YAML_PRETTIER,YAML_YAMLLINT
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
