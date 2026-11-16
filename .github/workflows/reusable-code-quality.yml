@@ -158,7 +158,7 @@ jobs:
             --entrypoint grype \
             -v "${{ runner.temp }}/_github_home:/github/home" \
             -e GRYPE_DB_CACHE_DIR=/github/home/.cache/grype \
-            ghcr.io/oxsecurity/megalinter:v10.1.0 \
+            ghcr.io/oxsecurity/megalinter:v10.2.0 \
             db update; then
             echo "Grype database updated successfully"
             exit 0
