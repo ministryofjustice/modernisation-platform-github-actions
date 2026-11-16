@@ -146,7 +146,7 @@ jobs:
             --entrypoint grype \
             -v "${{ runner.temp }}/_github_home:/github/home" \
             -e GRYPE_DB_CACHE_DIR=/github/home/.cache/grype \
-            ghcr.io/ministryofjustice/modernisation-platform-github-actions:v10.2.0 \
+            ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:v10.2.0 \
             db update; then
             echo "Grype database updated successfully"
             exit 0
@@ -168,7 +168,7 @@ jobs:
           echo "::warning::Using cached Grype database (${DB_AGE_DAYS} days old) since the update failed"
 
       - name: Run MegaLinter (Custom Flavor)
-        uses: docker://ghcr.io/ministryofjustice/modernisation-platform-github-actions:v10.2.0
+        uses: docker://ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:v10.2.0
         env:
           GITHUB_TOKEN: ${{ github.token }}
           VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase != '' && inputs.validate_all_codebase || ((github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main' && 'true') || 'false' }}
