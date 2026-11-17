@@ -122,6 +122,6 @@ jobs:
           VERSION: ${{ needs.build-flavor.outputs.version }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          docker pull "ghcr.io/$REPO_OWNER/ministryofjustice/modernisation-platform-github-actions-megalinter:$VERSION"
-          docker inspect "ghcr.io/$REPO_OWNER/ministryofjustice/modernisation-platform-github-actions-megalinter:$VERSION"
+          docker pull "ghcr.io/$REPO_OWNER/modernisation-platform-github-actions-megalinter:$VERSION"
+          docker inspect "ghcr.io/$REPO_OWNER/modernisation-platform-github-actions-megalinter:$VERSION"
           echo "✅ Custom MegaLinter flavor image successfully built and published"
