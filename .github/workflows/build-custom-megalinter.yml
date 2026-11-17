@@ -49,10 +49,10 @@ jobs:
           ref: ${{ steps.version.outputs.version }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@39760bca2cd6ffe4c8d1c63a6b51994ecb5d10f5 # v3.6.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@9780b0c56667666bea2f1aef89d20f541c8c5549 # v3.3.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -60,7 +60,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f72a4bfabd # v5.6.1
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/${{ github.repository_owner }}/modernisation-platform-github-actions-megalinter
           tags: |
@@ -68,7 +68,7 @@ jobs:
             type=ref,event=branch
 
       - name: Build and push custom flavor
-        uses: docker/build-push-action@4f58ea79222b3b9dc2c5dddf19d13cee248b3121 # v6.9.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: flavors/custom-builder
           file: flavors/custom-builder/Dockerfile
@@ -88,6 +88,6 @@ jobs:
       - name: Pull and inspect image
         shell: bash
         run: |
-          docker pull ghcr.io/${{ github.repository_owner }}/modernisation-platform-github-actions:${{ needs.build-flavor.outputs.version }}
-          docker inspect ghcr.io/${{ github.repository_owner }}/modernisation-platform-github-actions:${{ needs.build-flavor.outputs.version }}
+          docker pull ghcr.io/${{ github.repository_owner }}/modernisation-platform-github-actions-megalinter:${{ needs.build-flavor.outputs.version }}
+          docker inspect ghcr.io/${{ github.repository_owner }}/modernisation-platform-github-actions-megalinter:${{ needs.build-flavor.outputs.version }}
           echo "✅ Custom MegaLinter flavor image successfully built and published"
