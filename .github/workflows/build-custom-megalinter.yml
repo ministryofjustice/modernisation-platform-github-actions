@@ -88,6 +88,6 @@ jobs:
       - name: Pull and inspect image
         shell: bash
         run: |
-          docker pull ghcr.io/${{ github.repository_owner }}/modernisation-platform-github-actions:${{ needs.build-flavor.outputs.version }}
-          docker inspect ghcr.io/${{ github.repository_owner }}/modernisation-platform-github-actions:${{ needs.build-flavor.outputs.version }}
+          docker pull ghcr.io/${{ github.repository_owner }}/modernisation-platform-github-actions-megalinter:${{ needs.build-flavor.outputs.version }}
+          docker inspect ghcr.io/${{ github.repository_owner }}/modernisation-platform-github-actions-megalinter:${{ needs.build-flavor.outputs.version }}
           echo "✅ Custom MegaLinter flavor image successfully built and published"
