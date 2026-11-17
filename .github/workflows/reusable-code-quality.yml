@@ -176,24 +176,6 @@ jobs:
           fi
           echo "::warning::Using cached Grype database (${DB_AGE_DAYS} days old) since the update failed"
 
-          TERRAFORM_TFLINT_UNSECURED_ENV_VARIABLES: GITHUB_TOKEN
-          YAML_YAMLLINT_CLI_LINT_MODE: list_of_files
-          YAML_YAMLLINT_DISABLE_ERRORS: true
-          APPLY_FIXES: ${{ inputs.apply_fixes && 'JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,TERRAFORM_TERRAFORM_FMT,YAML_PRETTIER' || 'none' }}
-          APPLY_FIXES_EVENT: ${{ github.event_name == 'schedule' && 'all' || 'pull_request' }}
-          APPLY_FIXES_MODE: pull_request
-          EMAIL_REPORTER: false
-          REPORT_OUTPUT_FOLDER: megalinter-reports
-          REPORTERS: sarif
-          SARIF_REPORTER: true
-          YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
-          REPORTERS_MARKDOWN_TYPE: simple
-          ACTION_ZIZMOR_UNSECURED_ENV_VARIABLES: GITHUB_TOKEN
-          ACTION_ACTIONLINT_FILTER_REGEX_EXCLUDE: "${{ inputs.action_actionlint_filter_regex_exclude }}"
-          EDITORCONFIG_EDITORCONFIG_CHECKER_CLI_LINT_MODE: list_of_files
-          FILTER_REGEX_EXCLUDE: "${{ inputs.filter_regex_exclude }}"
-          DISABLE_ERRORS_LINTERS: ${{ github.event_name == 'pull_request' && 'REPOSITORY_GRYPE' || '' }}
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
