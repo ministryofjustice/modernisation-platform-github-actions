@@ -194,17 +194,15 @@ jobs:
           FILTER_REGEX_EXCLUDE: ${{ inputs.filter_regex_exclude }}
           DISABLE_ERRORS_LINTERS: ${{ github.event_name == 'pull_request' && 'REPOSITORY_GRYPE' || '' }}
 
-      - name: Run MegaLinter (Custom Flavor)
+      - name: Run MegaLinter (Standard)
         if: ${{ !cancelled() }}
-        uses: docker://ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:latest
+        uses: oxsecurity/megalinter@f2fe8c1cba37091848df3e524066c8c23ef353ed # v10.2.0
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MEGALINTER_CONFIG: ${{ inputs.megalinter_config }}
           # The database was refreshed immediately before MegaLinter; avoid a second download.
           GRYPE_DB_AUTO_UPDATE: false
           GRYPE_DB_CACHE_DIR: /github/home/.cache/grype
-          # Custom flavor: pre-built image with 15 essential linters (formatting, linting, SAST, SCA, secrets)
-          # Reduces image size from ~4.4GB (full) to ~600-700MB, avoiding disk space exhaustion on runners
           ENABLE_LINTERS: ${{ inputs.enable_linters != '' && format('{0},{1}', env.BASELINE_LINTERS, inputs.enable_linters) || env.BASELINE_LINTERS }}
           DISABLE_LINTERS: ${{ inputs.disable_linters }}
           ENABLE_DISABLE_LINTERS_PRIORITY: DISABLE
@@ -218,7 +216,6 @@ jobs:
           EDITORCONFIG_EDITORCONFIG_CHECKER_CLI_LINT_MODE: list_of_files
           TERRAFORM_TFLINT_ARGUMENTS: ${{ inputs.tflint_arguments }}
           TERRAFORM_TFLINT_CLI_LINT_MODE: ${{ github.event_name == 'pull_request' && 'list_of_files' || 'project' }}
-          # tflint's plugin installer treats the masked GITHUB_TOKEN placeholder as a real credential and gets a 401.
           TERRAFORM_TFLINT_UNSECURED_ENV_VARIABLES: GITHUB_TOKEN
           YAML_YAMLLINT_CLI_LINT_MODE: list_of_files
           YAML_YAMLLINT_DISABLE_ERRORS: true
