@@ -94,13 +94,6 @@ jobs:
   lint-and-sast:
     name: Lint and SAST
     runs-on: ${{ inputs.runs_on }}
-    env:
-      BASELINE_LINTERS: >-
-        ACTION_ACTIONLINT,ACTION_ZIZMOR,BASH_SHELLCHECK,DOCKERFILE_HADOLINT,
-        EDITORCONFIG_EDITORCONFIG_CHECKER,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,
-        REPOSITORY_BETTERLEAKS,REPOSITORY_CHECKOV,REPOSITORY_GRYPE,
-        REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,
-        YAML_PRETTIER,YAML_YAMLLINT
     permissions:
       actions: read
       contents: write
@@ -153,7 +146,7 @@ jobs:
             --entrypoint grype \
             -v "${{ runner.temp }}/_github_home:/github/home" \
             -e GRYPE_DB_CACHE_DIR=/github/home/.cache/grype \
-            ghcr.io/oxsecurity/megalinter:v10.1.0 \
+            ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:v10.2.0 \
             db update; then
             echo "Grype database updated successfully"
             exit 0
@@ -174,30 +167,17 @@ jobs:
           fi
           echo "::warning::Using cached Grype database (${DB_AGE_DAYS} days old) since the update failed"
 
-      - name: Run MegaLinter
-        uses: oxsecurity/megalinter@f2fe8c1cba37091848df3e524066c8c23ef353ed # v10.2.0
+      - name: Run MegaLinter (Custom Flavor)
+        uses: docker://ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:v10.2.0
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          MEGALINTER_CONFIG: ${{ inputs.megalinter_config }}
-          # The database was refreshed immediately before MegaLinter; avoid a second download.
+          VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase != '' && inputs.validate_all_codebase || ((github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main' && 'true') || 'false' }}
           GRYPE_DB_AUTO_UPDATE: false
           GRYPE_DB_CACHE_DIR: /github/home/.cache/grype
-          # Baseline: formatting and linting, plus IaC/code SAST, SCA and secret scanning.
-          # Trivy is deliberately excluded; Grype and Checkov give equivalent coverage.
-          ENABLE_LINTERS: ${{ inputs.enable_linters != '' && format('{0},{1}', env.BASELINE_LINTERS, inputs.enable_linters) || env.BASELINE_LINTERS }}
-          DISABLE_LINTERS: ${{ inputs.disable_linters }}
-          ENABLE_DISABLE_LINTERS_PRIORITY: DISABLE
-          DISABLE_ERRORS_LINTERS: ${{ github.event_name == 'pull_request' && 'REPOSITORY_GRYPE' || '' }}
-          FILTER_REGEX_EXCLUDE: ${{ inputs.filter_regex_exclude }}
-          VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase != '' && inputs.validate_all_codebase || ((github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main' && 'true') || 'false' }}
           REPOSITORY_CHECKOV_ARGUMENTS: ${{ inputs.checkov_arguments }}
           REPOSITORY_CHECKOV_CLI_LINT_MODE: ${{ github.event_name == 'pull_request' && 'file' || 'project' }}
-          ACTION_ZIZMOR_UNSECURED_ENV_VARIABLES: GITHUB_TOKEN
-          ACTION_ACTIONLINT_FILTER_REGEX_EXCLUDE: ${{ inputs.action_actionlint_filter_regex_exclude }}
-          EDITORCONFIG_EDITORCONFIG_CHECKER_CLI_LINT_MODE: list_of_files
           TERRAFORM_TFLINT_ARGUMENTS: ${{ inputs.tflint_arguments }}
           TERRAFORM_TFLINT_CLI_LINT_MODE: ${{ github.event_name == 'pull_request' && 'list_of_files' || 'project' }}
-          # tflint's plugin installer treats the masked GITHUB_TOKEN placeholder as a real credential and gets a 401.
           TERRAFORM_TFLINT_UNSECURED_ENV_VARIABLES: GITHUB_TOKEN
           YAML_YAMLLINT_CLI_LINT_MODE: list_of_files
           YAML_YAMLLINT_DISABLE_ERRORS: true
@@ -210,6 +190,11 @@ jobs:
           SARIF_REPORTER: true
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
           REPORTERS_MARKDOWN_TYPE: simple
+          ACTION_ZIZMOR_UNSECURED_ENV_VARIABLES: GITHUB_TOKEN
+          ACTION_ACTIONLINT_FILTER_REGEX_EXCLUDE: ${{ inputs.action_actionlint_filter_regex_exclude }}
+          EDITORCONFIG_EDITORCONFIG_CHECKER_CLI_LINT_MODE: list_of_files
+          FILTER_REGEX_EXCLUDE: ${{ inputs.filter_regex_exclude }}
+          DISABLE_ERRORS_LINTERS: ${{ github.event_name == 'pull_request' && 'REPOSITORY_GRYPE' || '' }}
 
       - name: Fix Grype database permissions
         if: ${{ !cancelled() }}
