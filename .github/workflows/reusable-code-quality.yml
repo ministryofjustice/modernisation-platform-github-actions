@@ -185,15 +185,13 @@ jobs:
 
       - name: Run MegaLinter (Custom Flavor)
         if: ${{ !cancelled() }}
-        uses: docker://ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:latest
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MEGALINTER_CONFIG: ${{ inputs.megalinter_config }}
-          # The database was refreshed immediately before MegaLinter; avoid a second download.
+          DEFAULT_WORKSPACE: /github/workspace
           GRYPE_DB_AUTO_UPDATE: false
           GRYPE_DB_CACHE_DIR: /github/home/.cache/grype
-          # Custom flavor: pre-built image with 15 essential linters (formatting, linting, SAST, SCA, secrets)
-          # Reduces image size from ~4.4GB (full) to ~600-700MB, avoiding disk space exhaustion on runners
           ENABLE_LINTERS: ${{ inputs.enable_linters != '' && format('{0},{1}', env.BASELINE_LINTERS, inputs.enable_linters) || env.BASELINE_LINTERS }}
           DISABLE_LINTERS: ${{ inputs.disable_linters }}
           ENABLE_DISABLE_LINTERS_PRIORITY: DISABLE
@@ -207,7 +205,6 @@ jobs:
           EDITORCONFIG_EDITORCONFIG_CHECKER_CLI_LINT_MODE: list_of_files
           TERRAFORM_TFLINT_ARGUMENTS: ${{ inputs.tflint_arguments }}
           TERRAFORM_TFLINT_CLI_LINT_MODE: ${{ github.event_name == 'pull_request' && 'list_of_files' || 'project' }}
-          # tflint's plugin installer treats the masked GITHUB_TOKEN placeholder as a real credential and gets a 401.
           TERRAFORM_TFLINT_UNSECURED_ENV_VARIABLES: GITHUB_TOKEN
           YAML_YAMLLINT_CLI_LINT_MODE: list_of_files
           YAML_YAMLLINT_DISABLE_ERRORS: true
@@ -220,6 +217,49 @@ jobs:
           SARIF_REPORTER: true
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
           REPORTERS_MARKDOWN_TYPE: simple
+        run: |
+          docker run --rm \
+            --workdir /github/workspace \
+            -e GITHUB_TOKEN \
+            -e DEFAULT_WORKSPACE \
+            -e MEGALINTER_CONFIG \
+            -e GRYPE_DB_AUTO_UPDATE \
+            -e GRYPE_DB_CACHE_DIR \
+            -e ENABLE_LINTERS \
+            -e DISABLE_LINTERS \
+            -e ENABLE_DISABLE_LINTERS_PRIORITY \
+            -e DISABLE_ERRORS_LINTERS \
+            -e FILTER_REGEX_EXCLUDE \
+            -e VALIDATE_ALL_CODEBASE \
+            -e REPOSITORY_CHECKOV_ARGUMENTS \
+            -e REPOSITORY_CHECKOV_CLI_LINT_MODE \
+            -e ACTION_ZIZMOR_UNSECURED_ENV_VARIABLES \
+            -e ACTION_ACTIONLINT_FILTER_REGEX_EXCLUDE \
+            -e EDITORCONFIG_EDITORCONFIG_CHECKER_CLI_LINT_MODE \
+            -e TERRAFORM_TFLINT_ARGUMENTS \
+            -e TERRAFORM_TFLINT_CLI_LINT_MODE \
+            -e TERRAFORM_TFLINT_UNSECURED_ENV_VARIABLES \
+            -e YAML_YAMLLINT_CLI_LINT_MODE \
+            -e YAML_YAMLLINT_DISABLE_ERRORS \
+            -e APPLY_FIXES \
+            -e APPLY_FIXES_EVENT \
+            -e APPLY_FIXES_MODE \
+            -e EMAIL_REPORTER \
+            -e REPORT_OUTPUT_FOLDER \
+            -e REPORTERS \
+            -e SARIF_REPORTER \
+            -e YAML_PRETTIER_FILTER_REGEX_EXCLUDE \
+            -e REPORTERS_MARKDOWN_TYPE \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "${{ runner.temp }}/_github_home:/github/home" \
+            -v "${{ github.workspace }}:/github/workspace" \
+            ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:latest
+
+      - name: Fix MegaLinter report permissions
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" megalinter-reports mega-linter.log 2>/dev/null || true
 
       - name: Fix Grype database permissions
         if: ${{ !cancelled() }}
