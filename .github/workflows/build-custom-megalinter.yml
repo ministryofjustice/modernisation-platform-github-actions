@@ -15,9 +15,7 @@ name: Build Custom MegaLinter
   schedule:
     - cron: "0 2 * * 0"
 
-permissions:
-  contents: read
-  packages: write
+permissions: {}
 
 jobs:
   build-flavor:
@@ -30,19 +28,21 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     env:
       CUSTOM_FLAVOR_BUILD_REPO: "ministryofjustice/modernisation-platform-github-actions-megalinter"
+      CUSTOM_FLAVOR_LINTERS: "ACTION_ACTIONLINT,ACTION_ZIZMOR,BASH_SHELLCHECK,DOCKERFILE_HADOLINT,EDITORCONFIG_EDITORCONFIG_CHECKER,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,REPOSITORY_BETTERLEAKS,REPOSITORY_CHECKOV,REPOSITORY_GRYPE,REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,YAML_PRETTIER,YAML_YAMLLINT"
       CUSTOM_FLAVOR_BUILD_REPO_URL: "https://github.com/${{ github.repository }}"
       CUSTOM_FLAVOR_BUILD_USER: "${{ github.actor }}"
-      CUSTOM_FLAVOR_LINTERS: "ACTION_ACTIONLINT,ACTION_ZIZMOR,BASH_SHELLCHECK,DOCKERFILE_HADOLINT,EDITORCONFIG_EDITORCONFIG_CHECKER,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,REPOSITORY_BETTERLEAKS,REPOSITORY_CHECKOV,REPOSITORY_GRYPE,REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,YAML_PRETTIER,YAML_YAMLLINT"
     steps:
       - name: Set version
         id: version
         shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.megalinter_version }}
         run: |
-          if [ -z "${{ inputs.megalinter_version }}" ]; then
+          if [ -z "$INPUT_VERSION" ]; then
             # Default to latest MegaLinter version
             VERSION=$(curl -s https://api.github.com/repos/oxsecurity/megalinter/releases/latest | jq -r '.tag_name')
           else
-            VERSION="${{ inputs.megalinter_version }}"
+            VERSION="$INPUT_VERSION"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Building custom MegaLinter flavor: $VERSION"
@@ -56,41 +56,48 @@ jobs:
 
       - name: Build custom MegaLinter flavor using builder container
         shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           # Build custom flavor using the official MegaLinter custom flavor builder
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock:rw \
             -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
             -e CUSTOM_FLAVOR_PLATFORM="linux/amd64" \
-            -e CUSTOM_FLAVOR_BUILD_REPO="${{ env.CUSTOM_FLAVOR_BUILD_REPO }}" \
-            -e CUSTOM_FLAVOR_BUILD_REPO_URL="${{ env.CUSTOM_FLAVOR_BUILD_REPO_URL }}" \
-            -e CUSTOM_FLAVOR_BUILD_USER="${{ env.CUSTOM_FLAVOR_BUILD_USER }}" \
-            -e CUSTOM_FLAVOR_LINTERS="${{ env.CUSTOM_FLAVOR_LINTERS }}" \
-            "ghcr.io/oxsecurity/megalinter-custom-flavor-builder:${{ steps.version.outputs.version }}"
+            -e CUSTOM_FLAVOR_BUILD_REPO="$CUSTOM_FLAVOR_BUILD_REPO" \
+            -e CUSTOM_FLAVOR_BUILD_REPO_URL="$CUSTOM_FLAVOR_BUILD_REPO_URL" \
+            -e CUSTOM_FLAVOR_BUILD_USER="$CUSTOM_FLAVOR_BUILD_USER" \
+            -e CUSTOM_FLAVOR_LINTERS="$CUSTOM_FLAVOR_LINTERS" \
+            "ghcr.io/oxsecurity/megalinter-custom-flavor-builder:$VERSION"
 
       - name: Tag and push custom flavor image
         shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
           # Tag with our repository name and version
-          IMAGE_VERSION="${{ steps.version.outputs.version }}"
           REPO_NAME="modernisation-platform-github-actions-megalinter"
-          
+
           # Tag the image
-          docker tag "${{ env.CUSTOM_FLAVOR_BUILD_REPO }}" "ghcr.io/${{ github.repository_owner }}/$REPO_NAME:$IMAGE_VERSION"
-          docker tag "${{ env.CUSTOM_FLAVOR_BUILD_REPO }}" "ghcr.io/${{ github.repository_owner }}/$REPO_NAME:latest"
-          
+          docker tag "$CUSTOM_FLAVOR_BUILD_REPO" "ghcr.io/$REPO_OWNER/$REPO_NAME:$VERSION"
+          docker tag "$CUSTOM_FLAVOR_BUILD_REPO" "ghcr.io/$REPO_OWNER/$REPO_NAME:latest"
+
           # Push to GHCR
-          docker push "ghcr.io/${{ github.repository_owner }}/$REPO_NAME:$IMAGE_VERSION"
-          docker push "ghcr.io/${{ github.repository_owner }}/$REPO_NAME:latest"
-          
+          docker push "ghcr.io/$REPO_OWNER/$REPO_NAME:$VERSION"
+          docker push "ghcr.io/$REPO_OWNER/$REPO_NAME:latest"
+
           echo "✅ Pushed custom MegaLinter flavor:"
-          echo "   ghcr.io/${{ github.repository_owner }}/$REPO_NAME:$IMAGE_VERSION"
-          echo "   ghcr.io/${{ github.repository_owner }}/$REPO_NAME:latest"
+          echo "   ghcr.io/$REPO_OWNER/$REPO_NAME:$VERSION"
+          echo "   ghcr.io/$REPO_OWNER/$REPO_NAME:latest"
 
   verify-image:
     name: Verify Custom MegaLinter Image
     needs: build-flavor
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
@@ -101,7 +108,10 @@ jobs:
 
       - name: Pull and inspect image
         shell: bash
+        env:
+          VERSION: ${{ needs.build-flavor.outputs.version }}
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          docker pull ghcr.io/${{ github.repository_owner }}/modernisation-platform-github-actions-megalinter:${{ needs.build-flavor.outputs.version }}
-          docker inspect ghcr.io/${{ github.repository_owner }}/modernisation-platform-github-actions-megalinter:${{ needs.build-flavor.outputs.version }}
+          docker pull "ghcr.io/$REPO_OWNER/modernisation-platform-github-actions-megalinter:$VERSION"
+          docker inspect "ghcr.io/$REPO_OWNER/modernisation-platform-github-actions-megalinter:$VERSION"
           echo "✅ Custom MegaLinter flavor image successfully built and published"
