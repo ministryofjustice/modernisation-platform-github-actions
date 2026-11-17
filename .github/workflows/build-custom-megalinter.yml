@@ -28,9 +28,6 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     env:
       CUSTOM_FLAVOR_BUILD_REPO: "ministryofjustice/modernisation-platform-github-actions-megalinter"
-      CUSTOM_FLAVOR_LINTERS: "ACTION_ACTIONLINT,ACTION_ZIZMOR,BASH_SHELLCHECK,DOCKERFILE_HADOLINT,EDITORCONFIG_EDITORCONFIG_CHECKER,JSON_PRETTIER,MARKDOWN_MARKDOWNLINT,REPOSITORY_BETTERLEAKS,REPOSITORY_CHECKOV,REPOSITORY_GRYPE,REPOSITORY_SEMGREP,TERRAFORM_TERRAFORM_FMT,TERRAFORM_TFLINT,YAML_PRETTIER,YAML_YAMLLINT"
-      CUSTOM_FLAVOR_BUILD_REPO_URL: "https://github.com/${{ github.repository }}"
-      CUSTOM_FLAVOR_BUILD_USER: "${{ github.actor }}"
     steps:
       - name: Set version
         id: version
@@ -54,42 +51,55 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build custom MegaLinter flavor using builder container
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Create Dockerfile for custom MegaLinter flavor
         shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          # Build custom flavor using the official MegaLinter custom flavor builder
-          docker run --rm \
-            -v /var/run/docker.sock:/var/run/docker.sock:rw \
-            -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
-            -e CUSTOM_FLAVOR_PLATFORM="linux/amd64" \
-            -e CUSTOM_FLAVOR_BUILD_REPO="$CUSTOM_FLAVOR_BUILD_REPO" \
-            -e CUSTOM_FLAVOR_BUILD_REPO_URL="$CUSTOM_FLAVOR_BUILD_REPO_URL" \
-            -e CUSTOM_FLAVOR_BUILD_USER="$CUSTOM_FLAVOR_BUILD_USER" \
-            -e CUSTOM_FLAVOR_LINTERS="$CUSTOM_FLAVOR_LINTERS" \
-            "ghcr.io/oxsecurity/megalinter-custom-flavor-builder:$VERSION"
+          mkdir -p /tmp/megalinter-build
+          cat > /tmp/megalinter-build/Dockerfile << 'EOF'
+          ARG MEGALINTER_VERSION=v10.2.0
+          FROM ghcr.io/oxsecurity/megalinter:${MEGALINTER_VERSION}
 
-      - name: Tag and push custom flavor image
-        shell: bash
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          REPO_OWNER: ${{ github.repository_owner }}
-        run: |
-          # Tag with our repository name and version
-          REPO_NAME="modernisation-platform-github-actions-megalinter"
+          # Enable only the essential linters for Modernisation Platform
+          # This creates a slim image (~600-700MB vs ~4.4GB for full)
+          ENV ENABLE_ACTION_ACTIONLINT=true
+          ENV ENABLE_ACTION_ZIZMOR=true
+          ENV ENABLE_BASH_SHELLCHECK=true
+          ENV ENABLE_DOCKERFILE_HADOLINT=true
+          ENV ENABLE_EDITORCONFIG_EDITORCONFIG_CHECKER=true
+          ENV ENABLE_JSON_PRETTIER=true
+          ENV ENABLE_MARKDOWN_MARKDOWNLINT=true
+          ENV ENABLE_REPOSITORY_BETTERLEAKS=true
+          ENV ENABLE_REPOSITORY_CHECKOV=true
+          ENV ENABLE_REPOSITORY_GRYPE=true
+          ENV ENABLE_REPOSITORY_SEMGREP=true
+          ENV ENABLE_TERRAFORM_TERRAFORM_FMT=true
+          ENV ENABLE_TERRAFORM_TFLINT=true
+          ENV ENABLE_YAML_PRETTIER=true
+          ENV ENABLE_YAML_YAMLLINT=true
+          EOF
 
-          # Tag the image
-          docker tag "$CUSTOM_FLAVOR_BUILD_REPO" "ghcr.io/$REPO_OWNER/$REPO_NAME:$VERSION"
-          docker tag "$CUSTOM_FLAVOR_BUILD_REPO" "ghcr.io/$REPO_OWNER/$REPO_NAME:latest"
-
-          # Push to GHCR
-          docker push "ghcr.io/$REPO_OWNER/$REPO_NAME:$VERSION"
-          docker push "ghcr.io/$REPO_OWNER/$REPO_NAME:latest"
-
-          echo "✅ Pushed custom MegaLinter flavor:"
-          echo "   ghcr.io/$REPO_OWNER/$REPO_NAME:$VERSION"
-          echo "   ghcr.io/$REPO_OWNER/$REPO_NAME:latest"
+      - name: Build and push custom MegaLinter flavor
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: /tmp/megalinter-build
+          file: /tmp/megalinter-build/Dockerfile
+          build-args: |
+            MEGALINTER_VERSION=${{ steps.version.outputs.version }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ env.CUSTOM_FLAVOR_BUILD_REPO }}:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/${{ env.CUSTOM_FLAVOR_BUILD_REPO }}:latest
+          labels: |
+            org.opencontainers.image.title=modernisation-platform-github-actions-megalinter
+            org.opencontainers.image.description=Custom MegaLinter flavor for Modernisation Platform with essential linters
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
   verify-image:
     name: Verify Custom MegaLinter Image
@@ -112,6 +122,6 @@ jobs:
           VERSION: ${{ needs.build-flavor.outputs.version }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          docker pull "ghcr.io/$REPO_OWNER/modernisation-platform-github-actions-megalinter:$VERSION"
-          docker inspect "ghcr.io/$REPO_OWNER/modernisation-platform-github-actions-megalinter:$VERSION"
+          docker pull "ghcr.io/$REPO_OWNER/ministryofjustice/modernisation-platform-github-actions-megalinter:$VERSION"
+          docker inspect "ghcr.io/$REPO_OWNER/ministryofjustice/modernisation-platform-github-actions-megalinter:$VERSION"
           echo "✅ Custom MegaLinter flavor image successfully built and published"
