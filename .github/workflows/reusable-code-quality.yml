@@ -255,6 +255,12 @@ jobs:
             -v "${{ github.workspace }}:/github/workspace" \
             ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:latest
 
+      - name: Fix MegaLinter report permissions
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" megalinter-reports mega-linter.log 2>/dev/null || true
+
       - name: Fix Grype database permissions
         if: ${{ !cancelled() }}
         shell: bash
