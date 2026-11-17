@@ -189,6 +189,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MEGALINTER_CONFIG: ${{ inputs.megalinter_config }}
+          DEFAULT_WORKSPACE: /github/workspace
           GRYPE_DB_AUTO_UPDATE: false
           GRYPE_DB_CACHE_DIR: /github/home/.cache/grype
           ENABLE_LINTERS: ${{ inputs.enable_linters != '' && format('{0},{1}', env.BASELINE_LINTERS, inputs.enable_linters) || env.BASELINE_LINTERS }}
@@ -220,6 +221,7 @@ jobs:
           docker run --rm \
             --workdir /github/workspace \
             -e GITHUB_TOKEN \
+            -e DEFAULT_WORKSPACE \
             -e MEGALINTER_CONFIG \
             -e GRYPE_DB_AUTO_UPDATE \
             -e GRYPE_DB_CACHE_DIR \
