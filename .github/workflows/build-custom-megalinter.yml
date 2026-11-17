@@ -27,7 +27,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     env:
-      CUSTOM_FLAVOR_BUILD_REPO: "ministryofjustice/modernisation-platform-github-actions-megalinter"
+      CUSTOM_FLAVOR_BUILD_REPO: "modernisation-platform-github-actions-megalinter"
     steps:
       - name: Set version
         id: version
