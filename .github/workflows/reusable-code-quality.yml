@@ -196,7 +196,7 @@ jobs:
 
       - name: Run MegaLinter (Custom Flavor)
         if: ${{ !cancelled() }}
-        uses: docker://ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:v10.2.0
+        uses: docker://ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:latest
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MEGALINTER_CONFIG: ${{ inputs.megalinter_config }}
