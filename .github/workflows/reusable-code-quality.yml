@@ -232,6 +232,7 @@ jobs:
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
           REPORTERS_MARKDOWN_TYPE: simple
 
+      - name: Fix Grype database permissions
         if: ${{ !cancelled() }}
         shell: bash
         env:
