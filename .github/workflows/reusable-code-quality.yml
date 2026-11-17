@@ -151,12 +151,14 @@ jobs:
       - name: Populate Grype database
         # Always try a fresh DB; if that fails, fall back to the cached copy unless it's over a week old.
         shell: bash
+        env:
+          CACHE_DIR: ${{ runner.temp }}/_github_home/.cache/grype
+          RUNNER_TEMP: ${{ runner.temp }}
         run: |
-          CACHE_DIR="${{ runner.temp }}/_github_home/.cache/grype"
           mkdir -p "$CACHE_DIR"
           if docker run --rm \
             --entrypoint grype \
-            -v "${{ runner.temp }}/_github_home:/github/home" \
+            -v "$RUNNER_TEMP/_github_home:/github/home" \
             -e GRYPE_DB_CACHE_DIR=/github/home/.cache/grype \
             ghcr.io/oxsecurity/megalinter:v10.2.0 \
             db update; then
@@ -255,8 +257,10 @@ jobs:
       - name: Fix Grype database permissions
         if: ${{ !cancelled() }}
         shell: bash
+        env:
+          CACHE_DIR: ${{ runner.temp }}/_github_home/.cache/grype
         run: |
-          sudo chown -R "$(id -u):$(id -g)" "${{ runner.temp }}/_github_home/.cache/grype"
+          sudo chown -R "$(id -u):$(id -g)" "$CACHE_DIR"
 
       - name: Save Grype database cache
         if: ${{ !cancelled() }}
