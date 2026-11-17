@@ -189,9 +189,9 @@ jobs:
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
           REPORTERS_MARKDOWN_TYPE: simple
           ACTION_ZIZMOR_UNSECURED_ENV_VARIABLES: GITHUB_TOKEN
-          ACTION_ACTIONLINT_FILTER_REGEX_EXCLUDE: ${{ inputs.action_actionlint_filter_regex_exclude }}
+          ACTION_ACTIONLINT_FILTER_REGEX_EXCLUDE: "${{ inputs.action_actionlint_filter_regex_exclude }}"
           EDITORCONFIG_EDITORCONFIG_CHECKER_CLI_LINT_MODE: list_of_files
-          FILTER_REGEX_EXCLUDE: ${{ inputs.filter_regex_exclude }}
+          FILTER_REGEX_EXCLUDE: "${{ inputs.filter_regex_exclude }}"
           DISABLE_ERRORS_LINTERS: ${{ github.event_name == 'pull_request' && 'REPOSITORY_GRYPE' || '' }}
 
       - name: Log in to GitHub Container Registry
