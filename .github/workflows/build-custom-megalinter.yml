@@ -52,7 +52,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@39760bca2cd6ffe4c8d1c63a6b51994ecb5d10f5 # v4.1.0
+        uses: docker/setup-buildx-action@bf8388060db527dff14f48b6a5fdbe70763c1213 # v4.1.1
 
       - name: Create Dockerfile for custom MegaLinter flavor
         shell: bash
