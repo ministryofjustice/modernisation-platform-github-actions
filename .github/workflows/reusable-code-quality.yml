@@ -213,7 +213,7 @@ jobs:
           APPLY_FIXES_MODE: pull_request
           EMAIL_REPORTER: false
           REPORT_OUTPUT_FOLDER: megalinter-reports
-          REPORTERS: sarif
+          REPORTERS: sarif,github-pr-review
           SARIF_REPORTER: true
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
           REPORTERS_MARKDOWN_TYPE: simple
