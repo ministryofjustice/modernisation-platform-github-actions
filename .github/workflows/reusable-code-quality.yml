@@ -312,67 +312,66 @@ jobs:
               echo "## Detailed Issues"
               echo ""
               
-              # Extract error details - get everything from linter error line through error details
+              # Extract error details - simpler approach: get everything from error line through next blank major section
               if grep -q "⚠️.*Linted.*error\|❌.*Linted.*error" "megalinter-reports/megalinter.log"; then
+                # Strip ANSI codes first
                 sed 's/\x1b\[[0-9;]*m//g' "megalinter-reports/megalinter.log" | \
                 awk '
-                  BEGIN { in_error_section = 0; skip_next_summary = 0 }
+                  BEGIN { capturing = 0; in_code = 0 }
                   
+                  # Start capturing when we see an error line
                   /^(⚠️|❌) Linted.*error/ {
-                    # Start of error section
                     print $0
-                    in_error_section = 1
+                    capturing = 1
                     next
                   }
                   
-                  in_error_section && /^- Using/ {
-                    # Print configuration lines
-                    print $0
-                    next
-                  }
+                  # If not capturing, skip
+                  !capturing { next }
                   
-                  in_error_section && /^- / {
-                    # Other config lines
+                  # Capture configuration lines
+                  /^- / {
                     print $0
                     next
                   }
                   
-                  in_error_section && /^--Error detail:/ {
+                  # Capture error detail header
+                  /^--Error detail:/ {
                     print ""
                     print "**Error detail:**"
                     print ""
                     print "```"
+                    in_code = 1
                     next
                   }
                   
-                  in_error_section && /^\..*\.yml|\.yaml|\.tf|\.py|\.js|\.json/ {
-                    # File path
+                  # In code block: capture file paths and error lines
+                  in_code && /^\..*\.(yml|yaml|tf|py|js|json|md|sh)/ {
                     print $0
                     next
                   }
                   
-                  in_error_section && /^[0-9]+:[0-9]+/ {
-                    # Error line - print as-is
+                  # In code block: capture error lines (may have leading spaces)
+                  in_code && /^[ ]*[0-9]+:[0-9]+/ {
                     print $0
                     next
                   }
                   
-                  in_error_section && /^\+/ {
-                    # Next summary table - close code block and stop
-                    print "```"
-                    in_error_section = 0
+                  # Stop at next major section
+                  in_code && /^\+.*SUMMARY|^(Successfully|Error:|⚠️ |❌ )/ {
+                    if (NF > 0 && !/^---/ && !/^[ ]*[0-9]+:[0-9]+/) {
+                      print "```"
+                      capturing = 0
+                      in_code = 0
+                    }
                     next
                   }
                   
-                  in_error_section && /^(Successfully|$)/ && NF == 0 {
-                    # Empty line - could be end
-                    next
-                  }
-                  
-                  in_error_section && /^Successfully/ {
-                    # Success message - close and end
+                  # End on blank line after errors (between sections)
+                  in_code && /^$/ {
                     print "```"
-                    in_error_section = 0
+                    capturing = 0
+                    in_code = 0
                     next
                   }
                 ' | head -200
