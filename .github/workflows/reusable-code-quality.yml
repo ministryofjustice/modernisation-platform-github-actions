@@ -353,36 +353,40 @@ jobs:
                 ' "megalinter-reports/megalinter-report.md"
               else
                 # Fallback: Extract error details from the log file
-                # Look for linter result lines with errors and capture following error lines
+                # Look for sections with linters that have errors
                 if grep -q "Linted.*error" "megalinter-reports/megalinter.log"; then
-                  awk '
-                    /Linted.*error/ {
-                      # Strip ANSI color codes and print linter result
-                      gsub(/\x1b\[[0-9;]*m/, "");
-                      print $0;
+                  # Strip ANSI codes and extract linter results with their error details
+                  sed 's/\x1b\[[0-9;]*m//g' "megalinter-reports/megalinter.log" | awk '
+                    /^(⚠️|❌) Linted.*error/ {
+                      print $0
+                      capturing = 1
                       next
                     }
-                    /^[^ \t]/ && prev_file != "" && NF > 0 {
-                      # Starting a new section, store filename for error context
-                      prev_file = $0;
+                    capturing && /^- / {
+                      # Configuration line
+                      print $0
                       next
                     }
-                    /^\./ && /\.yml|\.yaml|\.tf|\.py|\.js|\.json/ {
-                      # This is a filename line
-                      curr_file = $0;
+                    capturing && /^[A-Z]/ {
+                      # New section header - stop capturing
+                      capturing = 0
                       next
                     }
-                    /^[0-9]+:[0-9]+/ {
-                      # This is an error line - print filename first if we have one
-                      if (curr_file != "") {
-                        print curr_file;
-                        curr_file = "";
-                      }
-                      gsub(/\x1b\[[0-9;]*m/, "");
-                      print "  " $0;
+                    capturing && /^$/ {
+                      # Empty line - could be end of section
                       next
                     }
-                  ' "megalinter-reports/megalinter.log" | head -100
+                    capturing && /^\.[a-zA-Z]/ {
+                      # File path
+                      print $0
+                      next
+                    }
+                    capturing && /^[0-9]+:[0-9]+/ {
+                      # Error line with line:column format
+                      print "  " $0
+                      next
+                    }
+                  ' | head -100
                 else
                   echo "✅ No detailed issues found"
                 fi
