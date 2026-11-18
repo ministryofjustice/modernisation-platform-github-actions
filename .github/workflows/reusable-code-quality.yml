@@ -331,28 +331,53 @@ jobs:
                 echo "MegaLinter summary table not found in log"
               fi
               
-              # Extract detailed issues section if there are any errors/warnings
+              # Extract detailed issues section if there are any errors
               echo ""
               echo "## Detailed Issues"
               echo ""
               
-              # Look for linter output sections with errors
-              # Match lines that start with ✅ or ⚠️ and contain errors (look for patterns like "1 error")
-              if grep -q "⚠️\|❌" "megalinter-reports/megalinter.log"; then
-                # Extract error details from linters that found issues
+              # Look for linter output sections - extract lines between linter headers and next section
+              # Pattern: Look for "❌ Linted" or "⚠️ Linted" with error info, then extract the following lines
+              if grep -q "\\(❌\\|⚠️\\) Linted.*error\|Error:" "megalinter-reports/megalinter.log"; then
                 awk '
-                  /^(⚠️|❌)/ && /[0-9]+ error/ {
+                  BEGIN { in_error_section = 0; skip_next = 0 }
+                  /^(❌|⚠️) Linted.*[0-9] error/ {
+                    # Print the linter result line
                     print $0
-                    # Capture error details that follow
-                    getline
-                    while ($0 !~ /^(⚠️|❌|[A-Z]|$)/ && NF > 0) {
-                      print $0
-                      getline
-                    }
+                    in_error_section = 1
+                    next
                   }
-                ' "megalinter-reports/megalinter.log"
+                  in_error_section && /^-/ {
+                    # Print configuration or rule lines
+                    print $0
+                    next
+                  }
+                  in_error_section && /^$/ {
+                    # Empty line might end section
+                    in_error_section = 0
+                    next
+                  }
+                  in_error_section && /^[a-zA-Z0-9.]/ {
+                    # File paths and error details
+                    print $0
+                    next
+                  }
+                  in_error_section && /^  [0-9]/ {
+                    # Error line numbers and messages
+                    print $0
+                    next
+                  }
+                  in_error_section && NF == 0 {
+                    next
+                  }
+                  in_error_section && !/^(❌|⚠️|-)/ {
+                    # Keep printing until we hit a new section
+                    print $0
+                    next
+                  }
+                ' "megalinter-reports/megalinter.log" | head -50
               else
-                echo "✅ No issues found"
+                echo "✅ No detailed issues found"
               fi
             else
               echo "MegaLinter reports completed. Detailed results available in the job artifacts."
