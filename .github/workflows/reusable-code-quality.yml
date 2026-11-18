@@ -274,7 +274,7 @@ jobs:
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "${{ runner.temp }}/_github_home:/github/home" \
             -v "${{ github.workspace }}:/github/workspace" \
-            -v "${{ github.workspace }}/.git:/github/workspace/.git:ro" \
+            -v "${{ github.workspace }}/.git:/github/workspace/.git" \
             ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:latest
 
       - name: Fix MegaLinter report permissions
