@@ -192,7 +192,8 @@ jobs:
         run: |
           # Fetch the base branch so MegaLinter can run git diff to detect changed files
           # This prevents MegaLinter from falling back to scanning the entire codebase
-          git fetch origin "${BASE_REF}" --depth=1 || true
+          # Use --no-depth to get full history for proper merge-base calculation
+          git fetch origin "${BASE_REF}" || true
           git fetch origin "refs/pull/${PR_NUMBER}/merge:refs/remotes/origin/pr-merge" --depth=1 || true
           # Ensure origin/HEAD points to the base branch for git diff
           git remote set-head origin "${BASE_REF}" || true
