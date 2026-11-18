@@ -373,7 +373,7 @@ jobs:
                       next
                     }
                     capturing && /^$/ {
-                      # Empty line - could be end of section
+                      # Empty line - could be end of section or between error groups
                       next
                     }
                     capturing && /^\.[a-zA-Z]/ {
@@ -381,9 +381,10 @@ jobs:
                       print $0
                       next
                     }
-                    capturing && /^[0-9]+:[0-9]+/ {
-                      # Error line with line:column format
-                      print "  " $0
+                    capturing && /^[ ]*[0-9]+:[0-9]+/ {
+                      # Error line with line:column format, possibly with leading spaces
+                      gsub(/^[ ]*/, "  ");  # Normalize indentation to 2 spaces
+                      print $0
                       next
                     }
                   ' | head -100
