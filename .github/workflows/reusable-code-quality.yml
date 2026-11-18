@@ -306,8 +306,9 @@ jobs:
             
             # Extract the summary table from the log file
             if [ -f "megalinter-reports/megalinter.log" ]; then
-              # Find and extract the SUMMARY table from the log
-              sed -n '/^+----SUMMARY/,/^+/p' "megalinter-reports/megalinter.log" | head -20
+              # Find and extract the SUMMARY table - from the first separator to the last
+              # The table format is: separator, header, separator, data rows, separator
+              awk '/^\+----SUMMARY/,/^\+--------------.*-\+$/ { print }' "megalinter-reports/megalinter.log" | tail -20
             else
               echo "MegaLinter reports completed. Detailed results available in the job artifacts."
             fi
