@@ -305,78 +305,65 @@ jobs:
               echo "## MegaLinter Report"
               echo ""
               
-              # Extract summary table - just use it as-is from the log
-              grep -A 25 "+----SUMMARY" "megalinter-reports/megalinter.log" | head -26
+              # Extract summary table and convert ASCII to Markdown
+              grep -A 25 "+----SUMMARY" "megalinter-reports/megalinter.log" | head -26 | \
+              awk '
+                BEGIN { header_seen = 0 }
+                NR == 1 { next }  # Skip first separator
+                /^\+/ { next }    # Skip all separators
+                /^\|/ {
+                  # Pipe-separated row
+                  gsub(/^ *\| */, "| ");
+                  gsub(/ *\| *$/, " |");
+                  gsub(/ *\| */, " | ");
+                  if (!header_seen) {
+                    # First data row is headers
+                    print $0;
+                    print "|---|---|---|---|---|---|---|---|---|";
+                    header_seen = 1
+                  } else {
+                    print $0;
+                  }
+                }
+              '
               
               echo ""
-              echo "## Detailed Issues"
+              echo "## Errors"
               echo ""
               
-              # Extract error details - simpler approach: get everything from error line through next blank major section
+              # Extract only the error details - skip all the config info
               if grep -q "⚠️.*Linted.*error\|❌.*Linted.*error" "megalinter-reports/megalinter.log"; then
-                # Strip ANSI codes first
                 sed 's/\x1b\[[0-9;]*m//g' "megalinter-reports/megalinter.log" | \
                 awk '
-                  BEGIN { capturing = 0; in_code = 0 }
+                  BEGIN { in_errors = 0 }
                   
-                  # Start capturing when we see an error line
-                  /^(⚠️|❌) Linted.*error/ {
-                    print $0
-                    capturing = 1
-                    next
-                  }
-                  
-                  # If not capturing, skip
-                  !capturing { next }
-                  
-                  # Capture configuration lines
-                  /^- / {
-                    print $0
-                    next
-                  }
-                  
-                  # Capture error detail header
+                  # Look for error detail section
                   /^--Error detail:/ {
-                    print ""
-                    print "**Error detail:**"
-                    print ""
+                    in_errors = 1
                     print "```"
-                    in_code = 1
                     next
                   }
                   
-                  # In code block: capture file paths and error lines
-                  in_code && /^\..*\.(yml|yaml|tf|py|js|json|md|sh)/ {
+                  # Capture file paths and error lines while in error section
+                  in_errors && /^\..*\.(yml|yaml|tf|py|js|json|md|sh)/ {
                     print $0
                     next
                   }
                   
-                  # In code block: capture error lines (may have leading spaces)
-                  in_code && /^[ ]*[0-9]+:[0-9]+/ {
+                  in_errors && /^[ ]*[0-9]+:[0-9]+/ {
                     print $0
                     next
                   }
                   
-                  # Stop at next major section
-                  in_code && /^\+.*SUMMARY|^(Successfully|Error:|⚠️ |❌ )/ {
-                    if (NF > 0 && !/^---/ && !/^[ ]*[0-9]+:[0-9]+/) {
-                      print "```"
-                      capturing = 0
-                      in_code = 0
-                    }
-                    next
-                  }
-                  
-                  # End on blank line after errors (between sections)
-                  in_code && /^$/ {
+                  # Stop at next section (blank line or new major section)
+                  in_errors && (/^\+|^Successfully|^\[|^$/) {
                     print "```"
-                    capturing = 0
-                    in_code = 0
+                    in_errors = 0
                     next
                   }
-                ' | head -200
+                ' | head -150
               else
-                echo "✅ No detailed issues found"
+                echo "✅ No errors found"
               fi
             } >> "$GITHUB_STEP_SUMMARY"
           else
