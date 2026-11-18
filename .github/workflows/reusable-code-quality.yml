@@ -330,6 +330,30 @@ jobs:
               else
                 echo "MegaLinter summary table not found in log"
               fi
+              
+              # Extract detailed issues section if there are any errors/warnings
+              echo ""
+              echo "## Detailed Issues"
+              echo ""
+              
+              # Look for linter output sections with errors
+              # Match lines that start with ✅ or ⚠️ and contain errors (look for patterns like "1 error")
+              if grep -q "⚠️\|❌" "megalinter-reports/megalinter.log"; then
+                # Extract error details from linters that found issues
+                awk '
+                  /^(⚠️|❌)/ && /[0-9]+ error/ {
+                    print $0
+                    # Capture error details that follow
+                    getline
+                    while ($0 !~ /^(⚠️|❌|[A-Z]|$)/ && NF > 0) {
+                      print $0
+                      getline
+                    }
+                  }
+                ' "megalinter-reports/megalinter.log"
+              else
+                echo "✅ No issues found"
+              fi
             else
               echo "MegaLinter reports completed. Detailed results available in the job artifacts."
             fi
