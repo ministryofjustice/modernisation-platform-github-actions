@@ -197,6 +197,11 @@ jobs:
           git fetch origin "refs/pull/${PR_NUMBER}/merge:refs/remotes/origin/pr-merge" --depth=1 || true
           # Ensure origin/HEAD points to the base branch for git diff
           git remote set-head origin "${BASE_REF}" || true
+          
+          # Calculate merge-base to ensure accurate file change detection
+          # This is crucial in busy repos where branches fall behind main
+          MERGE_BASE=$(git merge-base "origin/${BASE_REF}" HEAD)
+          echo "MERGE_BASE=${MERGE_BASE}" >> "${GITHUB_ENV}"
 
       - name: Run MegaLinter (Custom Flavor)
         if: ${{ !cancelled() }}
