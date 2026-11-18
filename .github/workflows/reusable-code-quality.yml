@@ -155,7 +155,7 @@ jobs:
             --entrypoint grype \
             -v "$RUNNER_TEMP/_github_home:/github/home" \
             -e GRYPE_DB_CACHE_DIR=/github/home/.cache/grype \
-            ghcr.io/oxsecurity/megalinter:v10.2.0 \
+            ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:latest \
             db update; then
             echo "Grype database updated successfully"
             exit 0
@@ -213,7 +213,7 @@ jobs:
           APPLY_FIXES_MODE: pull_request
           EMAIL_REPORTER: false
           REPORT_OUTPUT_FOLDER: megalinter-reports
-          REPORTERS: sarif
+          REPORTERS: sarif,github-pr-review
           SARIF_REPORTER: true
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
           REPORTERS_MARKDOWN_TYPE: simple
@@ -221,6 +221,14 @@ jobs:
           docker run --rm \
             --workdir /github/workspace \
             -e GITHUB_TOKEN \
+            -e GITHUB_SERVER_URL \
+            -e GITHUB_API_URL \
+            -e GITHUB_REPOSITORY \
+            -e GITHUB_REF \
+            -e GITHUB_SHA \
+            -e GITHUB_EVENT_NAME \
+            -e CI_COMMIT_SHA \
+            -e CI_COMMIT_REF_NAME \
             -e DEFAULT_WORKSPACE \
             -e MEGALINTER_CONFIG \
             -e GRYPE_DB_AUTO_UPDATE \
