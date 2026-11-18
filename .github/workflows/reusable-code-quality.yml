@@ -186,13 +186,16 @@ jobs:
       - name: Fetch git remote for MegaLinter
         if: ${{ github.event_name == 'pull_request' && !cancelled() }}
         shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PR_NUMBER: ${{ github.event.number }}
         run: |
           # Fetch the base branch so MegaLinter can run git diff to detect changed files
           # This prevents MegaLinter from falling back to scanning the entire codebase
-          git fetch origin "${{ github.base_ref }}" --depth=1 || true
-          git fetch origin "refs/pull/${{ github.event.number }}/merge:refs/remotes/origin/pr-merge" --depth=1 || true
+          git fetch origin "${BASE_REF}" --depth=1 || true
+          git fetch origin "refs/pull/${PR_NUMBER}/merge:refs/remotes/origin/pr-merge" --depth=1 || true
           # Ensure origin/HEAD points to the base branch for git diff
-          git remote set-head origin "${{ github.base_ref }}" || true
+          git remote set-head origin "${BASE_REF}" || true
 
       - name: Run MegaLinter (Custom Flavor)
         if: ${{ !cancelled() }}
