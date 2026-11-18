@@ -306,11 +306,12 @@ jobs:
               echo ""
               cat "megalinter-reports/mega-linter-report.md"
             } >> "$GITHUB_STEP_SUMMARY"
-          elif [ -f "mega-linter.log" ]; then
+          else
+            # Fallback: Extract summary from MegaLinter log
             {
-              echo "## MegaLinter Log"
+              echo "## MegaLinter Summary"
               echo ""
-              tail -100 "mega-linter.log"
+              grep -A 50 "^+----SUMMARY" mega-linter.log || tail -50 mega-linter.log
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
