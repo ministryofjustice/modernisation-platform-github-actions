@@ -305,80 +305,77 @@ jobs:
               echo "## MegaLinter Report"
               echo ""
               
-              # Extract summary table and convert ASCII to Markdown
-              grep -A 25 "+----SUMMARY" "megalinter-reports/megalinter.log" | head -26 | \
-              awk '
-                NR == 1 { next }  # Skip first separator
-                /^\+/ { next }    # Skip all separators
-                /^\|/ {
-                  # Convert pipe-separated to Markdown
-                  gsub(/^ *\| */, "| ");
-                  gsub(/ *\| *$/, " |");
-                  gsub(/ *\| */, " | ");
-                  if (NR == 2) {
-                    # Header row - add separator after
-                    print $0;
-                    print "|---|---|---|---|---|---|---|---|---|";
-                  } else {
-                    print $0;
-                  }
-                }
-              '
+              # Extract summary table - just use it as-is from the log
+              grep -A 25 "+----SUMMARY" "megalinter-reports/megalinter.log" | head -26
               
               echo ""
               echo "## Detailed Issues"
               echo ""
               
-              # Extract error details - look for sections with errors, extract until next section
+              # Extract error details - get everything from linter error line through error details
               if grep -q "⚠️.*Linted.*error\|❌.*Linted.*error" "megalinter-reports/megalinter.log"; then
                 sed 's/\x1b\[[0-9;]*m//g' "megalinter-reports/megalinter.log" | \
                 awk '
+                  BEGIN { in_error_section = 0; skip_next_summary = 0 }
+                  
                   /^(⚠️|❌) Linted.*error/ {
+                    # Start of error section
                     print $0
-                    print ""
-                    capturing = 1
+                    in_error_section = 1
                     next
                   }
-                  capturing && /^-.*Using/ {
+                  
+                  in_error_section && /^- Using/ {
+                    # Print configuration lines
                     print $0
                     next
                   }
-                  capturing && /^- / {
+                  
+                  in_error_section && /^- / {
                     # Other config lines
                     print $0
                     next
                   }
-                  capturing && /^--Error detail:/ {
+                  
+                  in_error_section && /^--Error detail:/ {
+                    print ""
                     print "**Error detail:**"
                     print ""
+                    print "```"
                     next
                   }
-                  capturing && /^\./ && /\.yml|\.yaml|\.tf|\.py|\.js/ {
+                  
+                  in_error_section && /^\..*\.yml|\.yaml|\.tf|\.py|\.js|\.json/ {
                     # File path
-                    print "```"
                     print $0
                     next
                   }
-                  capturing && /^[0-9]+:[0-9]+/ {
-                    # Error line
+                  
+                  in_error_section && /^[0-9]+:[0-9]+/ {
+                    # Error line - print as-is
                     print $0
                     next
                   }
-                  capturing && /^\+/ {
-                    # Next section (another table) - close code block and stop
+                  
+                  in_error_section && /^\+/ {
+                    # Next summary table - close code block and stop
                     print "```"
-                    capturing = 0
+                    in_error_section = 0
                     next
                   }
-                  capturing && /^(⚠️|❌|Successfully)/ {
-                    # End of section
-                    if (in_code) {
-                      print "```"
-                    }
-                    capturing = 0
+                  
+                  in_error_section && /^(Successfully|$)/ && NF == 0 {
+                    # Empty line - could be end
                     next
                   }
-                ' | head -150
+                  
+                  in_error_section && /^Successfully/ {
+                    # Success message - close and end
+                    print "```"
+                    in_error_section = 0
+                    next
+                  }
+                ' | head -200
               else
                 echo "✅ No detailed issues found"
               fi
