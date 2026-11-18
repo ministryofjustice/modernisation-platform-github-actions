@@ -305,18 +305,80 @@ jobs:
               echo "## MegaLinter Report"
               echo ""
               
-              # Extract and display the summary table
-              grep -A 25 "+----SUMMARY" "megalinter-reports/megalinter.log" | head -26
+              # Extract summary table and convert ASCII to Markdown
+              grep -A 25 "+----SUMMARY" "megalinter-reports/megalinter.log" | head -26 | \
+              awk '
+                NR == 1 { next }  # Skip first separator
+                /^\+/ { next }    # Skip all separators
+                /^\|/ {
+                  # Convert pipe-separated to Markdown
+                  gsub(/^ *\| */, "| ");
+                  gsub(/ *\| *$/, " |");
+                  gsub(/ *\| */, " | ");
+                  if (NR == 2) {
+                    # Header row - add separator after
+                    print $0;
+                    print "|---|---|---|---|---|---|---|---|---|";
+                  } else {
+                    print $0;
+                  }
+                }
+              '
               
               echo ""
               echo "## Detailed Issues"
               echo ""
               
-              # Extract error details from linters that found issues
+              # Extract error details - look for sections with errors, extract until next section
               if grep -q "⚠️.*Linted.*error\|❌.*Linted.*error" "megalinter-reports/megalinter.log"; then
-                # Find sections with errors and extract them
                 sed 's/\x1b\[[0-9;]*m//g' "megalinter-reports/megalinter.log" | \
-                awk '/^(⚠️|❌).*Linted.*error/{flag=1} flag && /^(⚠️|❌).*Linted/ && !/^(⚠️|❌).*Linted.*error/{flag=0} flag' | head -100
+                awk '
+                  /^(⚠️|❌) Linted.*error/ {
+                    print $0
+                    print ""
+                    capturing = 1
+                    next
+                  }
+                  capturing && /^-.*Using/ {
+                    print $0
+                    next
+                  }
+                  capturing && /^- / {
+                    # Other config lines
+                    print $0
+                    next
+                  }
+                  capturing && /^--Error detail:/ {
+                    print "**Error detail:**"
+                    print ""
+                    next
+                  }
+                  capturing && /^\./ && /\.yml|\.yaml|\.tf|\.py|\.js/ {
+                    # File path
+                    print "```"
+                    print $0
+                    next
+                  }
+                  capturing && /^[0-9]+:[0-9]+/ {
+                    # Error line
+                    print $0
+                    next
+                  }
+                  capturing && /^\+/ {
+                    # Next section (another table) - close code block and stop
+                    print "```"
+                    capturing = 0
+                    next
+                  }
+                  capturing && /^(⚠️|❌|Successfully)/ {
+                    # End of section
+                    if (in_code) {
+                      print "```"
+                    }
+                    capturing = 0
+                    next
+                  }
+                ' | head -150
               else
                 echo "✅ No detailed issues found"
               fi
