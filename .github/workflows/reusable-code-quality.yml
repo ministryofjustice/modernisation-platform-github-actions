@@ -299,23 +299,27 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         run: |
-          # Debug: List files in megalinter-reports
-          echo "Files in megalinter-reports:"
-          ls -la megalinter-reports/ 2>/dev/null || echo "Directory not found"
-          
           # Write MegaLinter results to job summary for visibility on Actions tab
-          if [ -f "megalinter-reports/megalinter-report.md" ]; then
-            cat "megalinter-reports/megalinter-report.md" >> "$GITHUB_STEP_SUMMARY"
-          elif [ -f "megalinter-reports/megalinter.md" ]; then
-            cat "megalinter-reports/megalinter.md" >> "$GITHUB_STEP_SUMMARY"
-          elif [ -f "megalinter-reports/mega-linter-report.md" ]; then
-            cat "megalinter-reports/mega-linter-report.md" >> "$GITHUB_STEP_SUMMARY"
-          elif [ -f "mega-linter.log" ]; then
-            # Try to extract summary from log file
+          if [ -f "megalinter-reports/megalinter.log" ]; then
             {
               echo "## MegaLinter Report"
               echo ""
-              grep -A 50 "+----SUMMARY" "mega-linter.log" | head -25
+              
+              # Extract and display the summary table
+              grep -A 25 "+----SUMMARY" "megalinter-reports/megalinter.log" | head -26
+              
+              echo ""
+              echo "## Detailed Issues"
+              echo ""
+              
+              # Extract error details from linters that found issues
+              if grep -q "⚠️.*Linted.*error\|❌.*Linted.*error" "megalinter-reports/megalinter.log"; then
+                # Find sections with errors and extract them
+                sed 's/\x1b\[[0-9;]*m//g' "megalinter-reports/megalinter.log" | \
+                awk '/^(⚠️|❌).*Linted.*error/{flag=1} flag && /^(⚠️|❌).*Linted/ && !/^(⚠️|❌).*Linted.*error/{flag=0} flag' | head -100
+              else
+                echo "✅ No detailed issues found"
+              fi
             } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "MegaLinter reports completed. Detailed results available in the job artifacts." >> "$GITHUB_STEP_SUMMARY"
