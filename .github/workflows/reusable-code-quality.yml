@@ -294,6 +294,22 @@ jobs:
         run: |
           sudo chown -R "$(id -u):$(id -g)" megalinter-reports mega-linter.log 2>/dev/null || true
 
+      - name: Write MegaLinter summary to GitHub Actions job summary
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          # MegaLinter's markdown reporter generates a report file
+          # Look for it in the megalinter-reports folder
+          if [ -f "megalinter-reports/mega-linter-report.md" ]; then
+            echo "## MegaLinter Summary" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            cat "megalinter-reports/mega-linter-report.md" >> "$GITHUB_STEP_SUMMARY"
+          elif [ -f "mega-linter.log" ]; then
+            echo "## MegaLinter Log" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            tail -100 "mega-linter.log" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Fix Grype database permissions
         if: ${{ !cancelled() }}
         shell: bash
