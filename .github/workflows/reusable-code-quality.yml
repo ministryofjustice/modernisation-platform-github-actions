@@ -229,6 +229,7 @@ jobs:
         run: |
           # For private repositories, pass GIT_AUTHORIZATION_BEARER to MegaLinter
           # MegaLinter will configure git to use the token for authentication
+          # Mount .git directory so MegaLinter can access git refs fetched on the host
           docker run --rm \
             --workdir /github/workspace \
             -e GIT_AUTHORIZATION_BEARER="${GITHUB_TOKEN}" \
@@ -273,6 +274,7 @@ jobs:
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "${{ runner.temp }}/_github_home:/github/home" \
             -v "${{ github.workspace }}:/github/workspace" \
+            -v "${{ github.workspace }}/.git:/github/workspace/.git:ro" \
             ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:latest
 
       - name: Fix MegaLinter report permissions
