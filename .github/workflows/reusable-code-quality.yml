@@ -352,15 +352,37 @@ jobs:
                   }
                 ' "megalinter-reports/megalinter-report.md"
               else
-                # Fallback: Look for error details in the log file
-                # Search for linter runs that had errors (look for "error" keyword)
-                if grep -qi "error" "megalinter-reports/megalinter.log"; then
-                  # Extract sections with error information
+                # Fallback: Extract error details from the log file
+                # Look for linter result lines with errors and capture following error lines
+                if grep -q "Linted.*error" "megalinter-reports/megalinter.log"; then
                   awk '
-                    /\[ERROR\]|error/ && NF > 0 {
-                      print $0
+                    /Linted.*error/ {
+                      # Strip ANSI color codes and print linter result
+                      gsub(/\x1b\[[0-9;]*m/, "");
+                      print $0;
+                      next
                     }
-                  ' "megalinter-reports/megalinter.log" | head -50
+                    /^[^ \t]/ && prev_file != "" && NF > 0 {
+                      # Starting a new section, store filename for error context
+                      prev_file = $0;
+                      next
+                    }
+                    /^\./ && /\.yml|\.yaml|\.tf|\.py|\.js|\.json/ {
+                      # This is a filename line
+                      curr_file = $0;
+                      next
+                    }
+                    /^[0-9]+:[0-9]+/ {
+                      # This is an error line - print filename first if we have one
+                      if (curr_file != "") {
+                        print curr_file;
+                        curr_file = "";
+                      }
+                      gsub(/\x1b\[[0-9;]*m/, "");
+                      print "  " $0;
+                      next
+                    }
+                  ' "megalinter-reports/megalinter.log" | head -100
                 else
                   echo "✅ No detailed issues found"
                 fi
