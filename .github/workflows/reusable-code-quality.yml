@@ -306,13 +306,15 @@ jobs:
               echo ""
               cat "megalinter-reports/mega-linter-report.md"
             } >> "$GITHUB_STEP_SUMMARY"
-          else
+          elif [ -f "mega-linter.log" ]; then
             # Fallback: Extract summary from MegaLinter log
-            {
-              echo "## MegaLinter Summary"
-              echo ""
-              grep -A 50 "^+----SUMMARY" mega-linter.log || tail -50 mega-linter.log
-            } >> "$GITHUB_STEP_SUMMARY"
+            echo "## MegaLinter Summary" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            (grep -A 50 "^+----SUMMARY" mega-linter.log || tail -50 mega-linter.log) >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          else
+            echo "## MegaLinter Summary" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "No MegaLinter report found" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Fix Grype database permissions
