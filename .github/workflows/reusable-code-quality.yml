@@ -302,27 +302,13 @@ jobs:
           {
             echo "## MegaLinter Report"
             echo ""
-            echo "Working directory: $(pwd)"
-            echo "Available files:"
-            ls -la . | grep -E "mega|report" || echo "No MegaLinter files found in workspace root"
-            echo ""
             
-            # Check for reports directory
-            if [ -d "megalinter-reports" ]; then
-              echo "### Reports Directory"
-              ls -la megalinter-reports/ 2>/dev/null || echo "Could not list reports"
-              echo ""
-              
-              # Try to extract summary
-              if [ -f "megalinter-reports/mega-linter-report.md" ]; then
-                cat "megalinter-reports/mega-linter-report.md"
-              fi
-            fi
-            
-            # Fallback message
-            if [ ! -f "megalinter-reports/mega-linter-report.md" ] && [ ! -f "mega-linter.log" ]; then
-              echo "### Linting Complete"
-              echo "Detailed MegaLinter reports are available in the job artifacts."
+            # Extract the summary table from the log file
+            if [ -f "megalinter-reports/megalinter.log" ]; then
+              # Find and extract the SUMMARY table from the log
+              sed -n '/^+----SUMMARY/,/^+/p' "megalinter-reports/megalinter.log" | head -20
+            else
+              echo "MegaLinter reports completed. Detailed results available in the job artifacts."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
