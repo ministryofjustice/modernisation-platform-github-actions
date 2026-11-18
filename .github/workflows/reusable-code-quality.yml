@@ -191,6 +191,8 @@ jobs:
           # This prevents MegaLinter from falling back to scanning the entire codebase
           git fetch origin "${{ github.base_ref }}" --depth=1 || true
           git fetch origin "refs/pull/${{ github.event.number }}/merge:refs/remotes/origin/pr-merge" --depth=1 || true
+          # Ensure origin/HEAD points to the base branch for git diff
+          git remote set-head origin "${{ github.base_ref }}" || true
 
       - name: Run MegaLinter (Custom Flavor)
         if: ${{ !cancelled() }}
