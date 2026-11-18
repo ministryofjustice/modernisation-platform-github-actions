@@ -183,6 +183,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Fetch git remote for MegaLinter
+        if: ${{ github.event_name == 'pull_request' && !cancelled() }}
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          # Fetch the base branch so MegaLinter can run git diff to detect changed files
+          # This prevents MegaLinter from falling back to scanning the entire codebase
+          git fetch origin "${BASE_REF}" --depth=1 || true
+          git fetch origin "refs/pull/${PR_NUMBER}/merge:refs/remotes/origin/pr-merge" --depth=1 || true
+          # Ensure origin/HEAD points to the base branch for git diff
+          git remote set-head origin "${BASE_REF}" || true
+
       - name: Run MegaLinter (Custom Flavor)
         if: ${{ !cancelled() }}
         shell: bash
@@ -218,8 +232,12 @@ jobs:
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
           REPORTERS_MARKDOWN_TYPE: simple
         run: |
+          # For private repositories, pass GIT_AUTHORIZATION_BEARER to MegaLinter
+          # MegaLinter will configure git to use the token for authentication
+          # Mount .git directory so MegaLinter can access git refs fetched on the host
           docker run --rm \
             --workdir /github/workspace \
+            -e GIT_AUTHORIZATION_BEARER="${GITHUB_TOKEN}" \
             -e GITHUB_TOKEN \
             -e GITHUB_SERVER_URL \
             -e GITHUB_API_URL \
@@ -261,6 +279,7 @@ jobs:
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "${{ runner.temp }}/_github_home:/github/home" \
             -v "${{ github.workspace }}:/github/workspace" \
+            -v "${{ github.workspace }}/.git:/github/workspace/.git" \
             ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:latest
 
       - name: Fix MegaLinter report permissions
