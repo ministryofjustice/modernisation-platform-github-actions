@@ -298,6 +298,7 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         run: |
+          # shellcheck disable=SC2010
           # Write MegaLinter results to job summary for visibility on Actions tab
           {
             echo "## MegaLinter Report"
