@@ -298,18 +298,35 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         run: |
-          # shellcheck disable=SC2010
           # Write MegaLinter results to job summary for visibility on Actions tab
           {
             echo "## MegaLinter Report"
             echo ""
             
-            # Extract the summary table from the log file
+            # Extract the summary table from the log file and convert to Markdown
             if [ -f "megalinter-reports/megalinter.log" ]; then
-              # Find line number of SUMMARY table and extract 20 lines from there
+              # Find line number of SUMMARY table
               line_num=$(grep -n "+----SUMMARY" "megalinter-reports/megalinter.log" | head -1 | cut -d: -f1)
               if [ -n "$line_num" ]; then
-                sed -n "${line_num},$((line_num + 20))p" "megalinter-reports/megalinter.log"
+                # Extract table lines and convert ASCII table to Markdown
+                sed -n "${line_num},$((line_num + 20))p" "megalinter-reports/megalinter.log" | \
+                awk '
+                  NR == 1 { next }  # Skip the first separator line
+                  /^\+/ { next }    # Skip all separator lines
+                  /^\|/ {
+                    # Process data rows: convert pipe-separated to Markdown format
+                    gsub(/^ *\| */, "| ");
+                    gsub(/ *\| *$/, " |");
+                    gsub(/ *\| */, " | ");
+                    if (NR == 2) {
+                      # First row is headers, add separator
+                      print $0;
+                      print "|---|---|---|---|---|---|---|---|---|";
+                    } else {
+                      print $0;
+                    }
+                  }
+                '
               else
                 echo "MegaLinter summary table not found in log"
               fi
