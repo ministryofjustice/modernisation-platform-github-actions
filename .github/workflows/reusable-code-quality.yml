@@ -237,7 +237,7 @@ jobs:
           SARIF_REPORTER: true
           TEXT_REPORTER: true
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
-          REPORTERS_MARKDOWN_TYPE: detailed
+          REPORTERS_MARKDOWN_TYPE: simple
         run: |
           # For private repositories, pass GIT_AUTHORIZATION_BEARER to MegaLinter
           # MegaLinter will configure git to use the token for authentication
