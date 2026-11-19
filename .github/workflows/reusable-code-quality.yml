@@ -304,7 +304,7 @@ jobs:
             {
               echo "## MegaLinter Report"
               echo ""
-              
+
               # Extract summary table and convert ASCII to Markdown
               grep -A 25 "+----SUMMARY" "megalinter-reports/megalinter.log" | head -26 | \
               awk '
@@ -326,35 +326,35 @@ jobs:
                   }
                 }
               '
-              
+
               echo ""
               echo "## Errors"
               echo ""
-              
+
               # Extract only the error details - skip all the config info
               if grep -q "⚠️.*Linted.*error\|❌.*Linted.*error" "megalinter-reports/megalinter.log"; then
                 sed 's/\x1b\[[0-9;]*m//g' "megalinter-reports/megalinter.log" | \
                 awk '
                   BEGIN { in_errors = 0 }
-                  
+
                   # Look for error detail section
                   /^--Error detail:/ {
                     in_errors = 1
                     print "```"
                     next
                   }
-                  
+
                   # Capture file paths and error lines while in error section
                   in_errors && /^\..*\.(yml|yaml|tf|py|js|json|md|sh)/ {
                     print $0
                     next
                   }
-                  
+
                   in_errors && /^[ ]*[0-9]+:[0-9]+/ {
                     print $0
                     next
                   }
-                  
+
                   # Stop at next section (blank line or new major section)
                   in_errors && (/^\+|^Successfully|^\[|^$/) {
                     print "```"
