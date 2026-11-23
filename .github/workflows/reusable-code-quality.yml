@@ -192,10 +192,16 @@ jobs:
         run: |
           # Fetch the base branch so MegaLinter can run git diff to detect changed files
           # This prevents MegaLinter from falling back to scanning the entire codebase
-          git fetch origin "${BASE_REF}" --depth=1 || true
+          # Use --no-depth to get full history for proper merge-base calculation
+          git fetch origin "${BASE_REF}" || true
           git fetch origin "refs/pull/${PR_NUMBER}/merge:refs/remotes/origin/pr-merge" --depth=1 || true
           # Ensure origin/HEAD points to the base branch for git diff
           git remote set-head origin "${BASE_REF}" || true
+
+          # Calculate merge-base to ensure accurate file change detection
+          # This is crucial in busy repos where branches fall behind main
+          MERGE_BASE=$(git merge-base "origin/${BASE_REF}" HEAD)
+          echo "MERGE_BASE=${MERGE_BASE}" >> "${GITHUB_ENV}"
 
       - name: Run MegaLinter (Custom Flavor)
         if: ${{ !cancelled() }}
@@ -227,8 +233,9 @@ jobs:
           APPLY_FIXES_MODE: pull_request
           EMAIL_REPORTER: false
           REPORT_OUTPUT_FOLDER: megalinter-reports
-          REPORTERS: sarif,github-pr-review
+          REPORTERS: sarif,github-pr-review,text
           SARIF_REPORTER: true
+          TEXT_REPORTER: true
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
           REPORTERS_MARKDOWN_TYPE: simple
         run: |
@@ -287,6 +294,81 @@ jobs:
         shell: bash
         run: |
           sudo chown -R "$(id -u):$(id -g)" megalinter-reports mega-linter.log 2>/dev/null || true
+
+      - name: Write MegaLinter summary to GitHub Actions job summary
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          # Write MegaLinter results to job summary for visibility on Actions tab
+          if [ -f "megalinter-reports/megalinter.log" ]; then
+            {
+              echo "## MegaLinter Report"
+              echo ""
+
+              # Extract summary table and convert ASCII to Markdown
+              grep -A 25 "+----SUMMARY" "megalinter-reports/megalinter.log" | head -26 | \
+              awk '
+                BEGIN { header_seen = 0 }
+                NR == 1 { next }  # Skip first separator
+                /^\+/ { next }    # Skip all separators
+                /^\|/ {
+                  # Pipe-separated row
+                  gsub(/^ *\| */, "| ");
+                  gsub(/ *\| *$/, " |");
+                  gsub(/ *\| */, " | ");
+                  if (!header_seen) {
+                    # First data row is headers
+                    print $0;
+                    print "|---|---|---|---|---|---|---|---|---|";
+                    header_seen = 1
+                  } else {
+                    print $0;
+                  }
+                }
+              '
+
+              echo ""
+              echo "## Errors"
+              echo ""
+
+              # Extract only the error details - skip all the config info
+              if grep -q "⚠️.*Linted.*error\|❌.*Linted.*error" "megalinter-reports/megalinter.log"; then
+                sed 's/\x1b\[[0-9;]*m//g' "megalinter-reports/megalinter.log" | \
+                awk '
+                  BEGIN { in_errors = 0 }
+
+                  # Look for error detail section
+                  /^--Error detail:/ {
+                    in_errors = 1
+                    print "```"
+                    next
+                  }
+
+                  # Capture file paths and error lines while in error section
+                  in_errors && /^\..*\.(yml|yaml|tf|py|js|json|md|sh)/ {
+                    print $0
+                    next
+                  }
+
+                  in_errors && /^[ ]*[0-9]+:[0-9]+/ {
+                    print $0
+                    next
+                  }
+
+                  # Stop at next section (blank line or new major section)
+                  in_errors && (/^\+|^Successfully|^\[|^$/) {
+                    print "```"
+                    in_errors = 0
+                    next
+                  }
+                ' | head -150
+              else
+                echo "✅ No errors found"
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "MegaLinter reports completed. Detailed results available in the job artifacts." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Fix Grype database permissions
         if: ${{ !cancelled() }}
