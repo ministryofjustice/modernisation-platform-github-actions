@@ -331,37 +331,63 @@ jobs:
               echo "## Errors"
               echo ""
 
-              # Extract only the error details - skip all the config info
+              # Extract error details from all linters that found issues
               if grep -q "⚠️.*Linted.*error\|❌.*Linted.*error" "megalinter-reports/megalinter.log"; then
                 sed 's/\x1b\[[0-9;]*m//g' "megalinter-reports/megalinter.log" | \
                 awk '
-                  BEGIN { in_errors = 0 }
+                  BEGIN { in_errors = 0; first_error = 1 }
+
+                  # Match linter result lines with errors
+                  /^(⚠️|❌) Linted.*error/ {
+                    if (!first_error) print "```\n"
+                    print $0
+                    in_errors = 1
+                    first_error = 0
+                    next
+                  }
 
                   # Look for error detail section
-                  /^--Error detail:/ {
-                    in_errors = 1
+                  in_errors && /^--Error detail:/ {
                     print "```"
                     next
                   }
 
-                  # Capture file paths and error lines while in error section
-                  in_errors && /^\..*\.(yml|yaml|tf|py|js|json|md|sh)/ {
+                  # Capture file paths
+                  in_errors && /^\./ && /\.(yml|yaml|tf|py|js|json|md|sh)$/ {
                     print $0
                     next
                   }
 
+                  # Capture error/warning lines (line:col format)
                   in_errors && /^[ ]*[0-9]+:[0-9]+/ {
                     print $0
                     next
                   }
 
-                  # Stop at next section (blank line or new major section)
-                  in_errors && (/^\+|^Successfully|^\[|^$/) {
-                    print "```"
-                    in_errors = 0
+                  # Stop capturing when we hit the next linter result or major section
+                  in_errors && /^(⚠️|❌) Linted|^\+|^Successfully|^\[/ && !/^(⚠️|❌) Linted.*error/ {
+                    if (in_errors) {
+                      print "```"
+                      in_errors = 0
+                    }
+                    if (/^(⚠️|❌) Linted.*error/) {
+                      print $0
+                      in_errors = 1
+                      first_error = 0
+                    }
                     next
                   }
-                ' | head -150
+
+                  # Also capture lines that look like errors (common patterns)
+                  in_errors && /^[ ]*[0-9]+/ && /error|warning/ {
+                    print $0
+                    next
+                  }
+
+                  END {
+                    if (in_errors) print "```"
+                  }
+                ' | head -200
               else
                 echo "✅ No errors found"
               fi
