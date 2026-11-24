@@ -341,12 +341,14 @@ jobs:
                 fi
 
                 # Extract detailed error information from SARIF report
+                echo ""
+                echo "**DEBUG: Checking SARIF report...**"
                 if [ -f "megalinter-reports/megalinter.sarif" ]; then
-                  error_count=$(jq '.runs[0].results | length' "megalinter-reports/megalinter.sarif" 2>/dev/null || echo 0)
-                  echo ""
-                  echo "**DEBUG: Error count = $error_count**"
+                  echo "**SARIF file found**"
+                  error_count=$(jq '.runs[0].results | length' "megalinter-reports/megalinter.sarif" 2>&1)
+                  echo "**Error count result: $error_count**"
                   
-                  if [ "$error_count" -gt 0 ]; then
+                  if [ "$error_count" -gt 0 ] 2>/dev/null; then
                     echo ""
                     echo "**Error Details:**"
                     echo ""
@@ -356,11 +358,17 @@ jobs:
                       echo "$line"
                     done
                   else
-                    echo "**DEBUG: Checking SARIF structure:**"
+                    echo "**DEBUG: Checking full SARIF structure:**"
                     echo "\`\`\`"
-                    jq '.runs[0] | keys' "megalinter-reports/megalinter.sarif" 2>/dev/null | head -20
+                    jq '.' "megalinter-reports/megalinter.sarif" 2>&1 | head -50
                     echo "\`\`\`"
                   fi
+                else
+                  echo "**SARIF file NOT found**"
+                  echo "**DEBUG: Available files in megalinter-reports:**"
+                  echo "\`\`\`"
+                  ls -la megalinter-reports/ 2>&1 | head -20
+                  echo "\`\`\`"
                 fi
               } >> "$GITHUB_STEP_SUMMARY"  
             else
