@@ -340,13 +340,13 @@ jobs:
                   echo "✅ No linting issues found"
                 fi
 
-                # Extract and display error details
+                # Extract and display error details (handles multiple linters with errors)
                 if grep -q "^--Error detail:" "megalinter-reports/megalinter.log"; then
                   echo ""
                   echo "**Error Details:**"
                   echo ""
                   echo "\`\`\`"
-                  awk '/^--Error detail:/,/^$/{if(!/^--Error detail:/)print}' "megalinter-reports/megalinter.log" | sed '/^$/d' | head -100
+                  awk '/^--Error detail:/{flag=1;next} /^$/{if(flag) flag=0; next} flag' "megalinter-reports/megalinter.log" | head -150
                   echo "\`\`\`"
                 fi
               } >> "$GITHUB_STEP_SUMMARY"
