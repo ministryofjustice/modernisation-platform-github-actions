@@ -308,10 +308,13 @@ jobs:
               {
                 echo "## MegaLinter Summary"
                 echo ""
+                echo "\`\`\`"
 
-                # Print header and table with emoji and ANSI codes removed
-                sed -n "${start_line}p" "megalinter-reports/megalinter.log" | sed 's/[✅❌⚠️]//g; s/\x1b\[[0-9;]*m//g'
-                echo "|---|---|---|---|---|---|---|---|---|"
+                # Print header (remove ANSI codes only, keep emoji)
+                sed -n "${start_line}p" "megalinter-reports/megalinter.log" | sed 's/\x1b\[[0-9;]*m//g'
+
+                # Print separator
+                sed -n "$((start_line+1))p" "megalinter-reports/megalinter.log" | sed 's/\x1b\[[0-9;]*m//g'
 
                 # Print data rows (skip header and separator, extract until closing separator)
                 next_line=$((start_line + 2))
@@ -319,20 +322,22 @@ jobs:
                   if [[ $line =~ ^\+ ]]; then
                     break
                   fi
-                  # Remove emoji and ANSI codes
-                  echo "$line" | sed 's/[✅❌⚠️]//g; s/\x1b\[[0-9;]*m//g'
+                  # Remove ANSI codes only, keep emoji
+                  echo "$line" | sed 's/\x1b\[[0-9;]*m//g'
                 done
+
+                echo "\`\`\`"
 
                 echo ""
                 echo "## Linting Issues"
                 echo ""
 
-                # Find and display linters with errors/warnings, stripping ANSI color codes and emoji
+                # Find and display linters with errors/warnings, stripping ANSI color codes only
                 if grep -q "Linted.*error" "megalinter-reports/megalinter.log"; then
-                  grep "Linted.*error" "megalinter-reports/megalinter.log" | sed 's/[✅❌⚠️]//g; s/\x1b\[[0-9;]*m//g'
+                  grep "Linted.*error" "megalinter-reports/megalinter.log" | sed 's/\x1b\[[0-9;]*m//g'
                 else
                   echo "✅ No linting issues found"
-                fi  
+                fi
 
                 # Extract and display error details
                 if grep -q "^--Error detail:" "megalinter-reports/megalinter.log"; then
