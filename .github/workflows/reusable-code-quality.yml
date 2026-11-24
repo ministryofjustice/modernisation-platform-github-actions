@@ -233,9 +233,10 @@ jobs:
           APPLY_FIXES_MODE: pull_request
           EMAIL_REPORTER: false
           REPORT_OUTPUT_FOLDER: megalinter-reports
-          REPORTERS: sarif,github-pr-review,text
+          REPORTERS: sarif,github-pr-review,text,markdown
           SARIF_REPORTER: true
           TEXT_REPORTER: true
+          MARKDOWN_REPORTER: true
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
           REPORTERS_MARKDOWN_TYPE: simple
         run: |
@@ -299,101 +300,55 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         run: |
-          # Write MegaLinter results to job summary for visibility on Actions tab
           if [ -f "megalinter-reports/megalinter.log" ]; then
-            {
-              echo "## MegaLinter Report"
-              echo ""
+            # Find the SUMMARY table header line
+            start_line=$(grep -n "^| Descriptor   | Linter" "megalinter-reports/megalinter.log" | tail -1 | cut -d: -f1)
 
-              # Extract summary table and convert ASCII to Markdown
-              grep -A 25 "+----SUMMARY" "megalinter-reports/megalinter.log" | head -26 | \
-              awk '
-                BEGIN { header_seen = 0 }
-                NR == 1 { next }  # Skip first separator
-                /^\+/ { next }    # Skip all separators
-                /^\|/ {
-                  # Pipe-separated row
-                  gsub(/^ *\| */, "| ");
-                  gsub(/ *\| *$/, " |");
-                  gsub(/ *\| */, " | ");
-                  if (!header_seen) {
-                    # First data row is headers
-                    print $0;
-                    print "|---|---|---|---|---|---|---|---|---|";
-                    header_seen = 1
-                  } else {
-                    print $0;
-                  }
-                }
-              '
+            if [ -n "$start_line" ]; then
+              {
+                echo "## MegaLinter Summary"
+                echo ""
 
-              echo ""
-              echo "## Errors"
-              echo ""
+                # Print header and table with emoji and ANSI codes removed
+                sed -n "${start_line}p" "megalinter-reports/megalinter.log" | sed 's/[✅❌⚠️]//g; s/\x1b\[[0-9;]*m//g'
+                echo "|---|---|---|---|---|---|---|---|---|"
 
-              # Extract error details from all linters that found issues
-              if grep -q "⚠️.*Linted.*error\|❌.*Linted.*error" "megalinter-reports/megalinter.log"; then
-                sed 's/\x1b\[[0-9;]*m//g' "megalinter-reports/megalinter.log" | \
-                awk '
-                  BEGIN { in_errors = 0; first_error = 1 }
+                # Print data rows (skip header and separator, extract until closing separator)
+                next_line=$((start_line + 2))
+                sed -n "${next_line},\$p" "megalinter-reports/megalinter.log" | while IFS= read -r line; do
+                  if [[ $line =~ ^\+ ]]; then
+                    break
+                  fi
+                  # Remove emoji and ANSI codes
+                  echo "$line" | sed 's/[✅❌⚠️]//g; s/\x1b\[[0-9;]*m//g'
+                done
 
-                  # Match linter result lines with errors
-                  /^(⚠️|❌) Linted.*error/ {
-                    if (!first_error) print "```\n"
-                    print $0
-                    in_errors = 1
-                    first_error = 0
-                    next
-                  }
+                echo ""
+                echo "## Linting Issues"
+                echo ""
 
-                  # Look for error detail section
-                  in_errors && /^--Error detail:/ {
-                    print "```"
-                    next
-                  }
+                # Find and display linters with errors/warnings, stripping ANSI color codes and emoji
+                if grep -q "Linted.*error" "megalinter-reports/megalinter.log"; then
+                  grep "Linted.*error" "megalinter-reports/megalinter.log" | sed 's/[✅❌⚠️]//g; s/\x1b\[[0-9;]*m//g'
+                else
+                  echo "✅ No linting issues found"
+                fi
 
-                  # Capture file paths
-                  in_errors && /^\./ && /\.(yml|yaml|tf|py|js|json|md|sh)$/ {
-                    print $0
-                    next
-                  }
-
-                  # Capture error/warning lines (line:col format)
-                  in_errors && /^[ ]*[0-9]+:[0-9]+/ {
-                    print $0
-                    next
-                  }
-
-                  # Stop capturing when we hit the next linter result or major section
-                  in_errors && /^(⚠️|❌) Linted|^\+|^Successfully|^\[/ && !/^(⚠️|❌) Linted.*error/ {
-                    if (in_errors) {
-                      print "```"
-                      in_errors = 0
-                    }
-                    if (/^(⚠️|❌) Linted.*error/) {
-                      print $0
-                      in_errors = 1
-                      first_error = 0
-                    }
-                    next
-                  }
-
-                  # Also capture lines that look like errors (common patterns)
-                  in_errors && /^[ ]*[0-9]+/ && /error|warning/ {
-                    print $0
-                    next
-                  }
-
-                  END {
-                    if (in_errors) print "```"
-                  }
-                ' | head -200
-              else
-                echo "✅ No errors found"
-              fi
-            } >> "$GITHUB_STEP_SUMMARY"
+                # Extract and display error details
+                if grep -q "^--Error detail:" "megalinter-reports/megalinter.log"; then
+                  echo ""
+                  echo "**Error Details:**"
+                  echo ""
+                  echo "\`\`\`"
+                  awk '/^--Error detail:/,/^$/{if(!/^--Error detail:/)print}' "megalinter-reports/megalinter.log" | sed '/^$/d' | head -100
+                  echo "\`\`\`"
+                fi
+              } >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "MegaLinter reports completed. Check job artifacts for details." >> "$GITHUB_STEP_SUMMARY"
+            fi
           else
-            echo "MegaLinter reports completed. Detailed results available in the job artifacts." >> "$GITHUB_STEP_SUMMARY"
+            echo "MegaLinter reports completed. Check job artifacts for details." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Fix Grype database permissions
