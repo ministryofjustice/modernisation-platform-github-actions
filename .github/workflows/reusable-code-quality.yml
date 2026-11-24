@@ -301,10 +301,26 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         run: |
+          echo "**DEBUG: Checking for markdown summary files...**"
+          echo ""
+          echo "Files in megalinter-reports:"
+          find megalinter-reports -type f -name "*markdown*" -o -name "*summary*" -o -name "*report*" | sort
+          echo ""
+          
+          # Try different possible filenames
           if [ -f "megalinter-reports/megalinter-report-markdown-summary.md" ]; then
+            echo "Found: megalinter-report-markdown-summary.md"
             cat "megalinter-reports/megalinter-report-markdown-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          elif [ -f "megalinter-reports/megalinter.md" ]; then
+            echo "Found: megalinter.md"
+            cat "megalinter-reports/megalinter.md" >> "$GITHUB_STEP_SUMMARY"
+          elif [ -f "megalinter-reports/MEGA-LINTER-REPORT.md" ]; then
+            echo "Found: MEGA-LINTER-REPORT.md"
+            cat "megalinter-reports/MEGA-LINTER-REPORT.md" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "MegaLinter reports completed. Check job artifacts for details." >> "$GITHUB_STEP_SUMMARY"
+            echo "No markdown summary file found. Available files:"
+            ls -la megalinter-reports/ | grep -E "\.(md|txt|sarif)" >> "$GITHUB_STEP_SUMMARY"
+          fi
           fi
 
       # TEST: Step with intentional actionlint errors (won't execute due to if: false)
