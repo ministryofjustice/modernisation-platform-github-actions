@@ -370,6 +370,15 @@ jobs:
             echo "MegaLinter reports completed. Check job artifacts for details." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # TEST: Step with intentional actionlint errors (won't execute due to if: false)
+      - name: Test actionlint error detection
+        if: false
+        run: |
+          # Invalid shell syntax that actionlint will catch
+          echo "Testing" && echo "Multiple statements"
+          undefined_variable_error="${UNDEFINED:?This variable must be set}"
+          another_error=$((1 / 0))
+
       - name: Fix Grype database permissions
         if: ${{ !cancelled() }}
         shell: bash
