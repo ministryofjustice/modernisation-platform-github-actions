@@ -302,8 +302,13 @@ jobs:
         shell: bash
         run: |
           {
+            # Look for markdown summary report - try common filenames
             if [ -f "megalinter-reports/megalinter-report.md" ]; then
               cat "megalinter-reports/megalinter-report.md"
+            elif [ -f "megalinter-reports/MARKDOWN_SUMMARY_REPORTER.md" ]; then
+              cat "megalinter-reports/MARKDOWN_SUMMARY_REPORTER.md"
+            elif find megalinter-reports -maxdepth 1 -name "*.md" -type f | head -1 | xargs -I{} cat {} 2>/dev/null; then
+              true
             else
               echo "**DEBUG: Markdown summary file not found**"
               echo ""
