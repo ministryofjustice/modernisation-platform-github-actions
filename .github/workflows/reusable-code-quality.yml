@@ -237,6 +237,7 @@ jobs:
           SARIF_REPORTER: true
           TEXT_REPORTER: true
           MARKDOWN_REPORTER: true
+          MARKDOWN_SUMMARY_REPORTER: true
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
           REPORTERS_MARKDOWN_TYPE: simple
         run: |
@@ -300,80 +301,8 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         run: |
-          # shellcheck disable=SC2001
-          if [ -f "megalinter-reports/megalinter.log" ]; then
-            # Find the SUMMARY table header line
-            start_line=$(grep -n "^| Descriptor   | Linter" "megalinter-reports/megalinter.log" | tail -1 | cut -d: -f1)
-
-            if [ -n "$start_line" ]; then
-              {
-                echo "## MegaLinter Summary"
-                echo ""
-                echo "\`\`\`"
-
-                # Print header (remove ANSI codes only, keep emoji)
-                sed -n "${start_line}p" "megalinter-reports/megalinter.log" | sed 's/\x1b\[[0-9;]*m//g'
-
-                # Print separator
-                sed -n "$((start_line+1))p" "megalinter-reports/megalinter.log" | sed 's/\x1b\[[0-9;]*m//g'
-
-                # Print data rows (skip header and separator, extract until closing separator)
-                next_line=$((start_line + 2))
-                sed -n "${next_line},\$p" "megalinter-reports/megalinter.log" | while IFS= read -r line; do
-                  if [[ $line =~ ^\+ ]]; then
-                    break
-                  fi
-                  # Remove ANSI codes only, keep emoji
-                  echo "$line" | sed 's/\x1b\[[0-9;]*m//g'
-                done
-
-                echo "\`\`\`"
-
-                echo ""
-                echo "## Linting Issues"
-                echo ""
-
-                # Find and display linters with errors/warnings, stripping ANSI color codes only
-                if grep -q "Linted.*error" "megalinter-reports/megalinter.log"; then
-                  grep "Linted.*error" "megalinter-reports/megalinter.log" | sed 's/\x1b\[[0-9;]*m//g'
-                else
-                  echo "✅ No linting issues found"
-                fi
-
-                # Extract detailed error information from SARIF report
-                echo ""
-                echo "**DEBUG: Checking SARIF report...**"
-                if [ -f "megalinter-reports/megalinter.sarif" ]; then
-                  echo "**SARIF file found**"
-                  error_count=$(jq '.runs[0].results | length' "megalinter-reports/megalinter.sarif" 2>&1)
-                  echo "**Error count result: $error_count**"
-                  
-                  if [ "$error_count" -gt 0 ] 2>/dev/null; then
-                    echo ""
-                    echo "**Error Details:**"
-                    echo ""
-                    jq -r '.runs[0].results[] |
-                      "\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine):\(.locations[0].physicalLocation.region.startColumn) \(.level | ascii_upcase): \(.message.text)"' \
-                      "megalinter-reports/megalinter.sarif" 2>/dev/null | head -50 | while IFS= read -r line; do
-                      echo "$line"
-                    done
-                  else
-                    echo "**DEBUG: Checking full SARIF structure:**"
-                    echo "\`\`\`"
-                    jq '.' "megalinter-reports/megalinter.sarif" 2>&1 | head -50
-                    echo "\`\`\`"
-                  fi
-                else
-                  echo "**SARIF file NOT found**"
-                  echo "**DEBUG: Available files in megalinter-reports:**"
-                  echo "\`\`\`"
-                  ls -la megalinter-reports/ 2>&1 | head -20
-                  echo "\`\`\`"
-                fi
-              } >> "$GITHUB_STEP_SUMMARY"  
-            else
-              echo "MegaLinter reports completed. Check job artifacts for details." >> "$GITHUB_STEP_SUMMARY"
-            fi
+          if [ -f "megalinter-reports/megalinter-report-markdown-summary.md" ]; then
+            cat "megalinter-reports/megalinter-report-markdown-summary.md" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "MegaLinter reports completed. Check job artifacts for details." >> "$GITHUB_STEP_SUMMARY"
           fi
