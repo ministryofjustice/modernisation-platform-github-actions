@@ -285,10 +285,13 @@ jobs:
             -e SARIF_REPORTER \
             -e YAML_PRETTIER_FILTER_REGEX_EXCLUDE \
             -e REPORTERS_MARKDOWN_TYPE \
+            -e MARKDOWN_SUMMARY_REPORTER \
+            -e GITHUB_STEP_SUMMARY \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "${{ runner.temp }}/_github_home:/github/home" \
             -v "${{ github.workspace }}:/github/workspace" \
             -v "${{ github.workspace }}/.git:/github/workspace/.git" \
+            -v "${{ env.GITHUB_STEP_SUMMARY }}:${{ env.GITHUB_STEP_SUMMARY }}" \
             ghcr.io/ministryofjustice/modernisation-platform-github-actions-megalinter:latest
 
       - name: Fix MegaLinter report permissions
