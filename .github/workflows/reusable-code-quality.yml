@@ -233,7 +233,7 @@ jobs:
           APPLY_FIXES_MODE: pull_request
           EMAIL_REPORTER: false
           REPORT_OUTPUT_FOLDER: megalinter-reports
-          REPORTERS: sarif,github-pr-review,text,markdown
+          REPORTERS: sarif,github-pr-review,text,markdown,markdown-summary
           SARIF_REPORTER: true
           TEXT_REPORTER: true
           MARKDOWN_REPORTER: true
