@@ -346,7 +346,7 @@ jobs:
                   if [ "$error_count" -gt 0 ]; then
                     echo ""
                     echo "**Error Details:**"
-                    echo ""
+                    echo ""  
                     jq -r '.runs[0].results[] |
                       "\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine):\(.locations[0].physicalLocation.region.startColumn) \(.level | ascii_upcase): \(.message.text)"' \
                       "megalinter-reports/megalinter.sarif" 2>/dev/null | head -50 | while IFS= read -r line; do
@@ -354,7 +354,7 @@ jobs:
                     done
                   fi
                 fi
-              } >> "$GITHUB_STEP_SUMMARY"
+              } >> "$GITHUB_STEP_SUMMARY"  
             else
               echo "MegaLinter reports completed. Check job artifacts for details." >> "$GITHUB_STEP_SUMMARY"
             fi
