@@ -340,14 +340,17 @@ jobs:
                   echo "✅ No linting issues found"
                 fi
 
+                # TEST: Intentional shell syntax error for actionlint to catch
+                intentional_error="${undefined_var:?Variable must be set}"
+
                 # Extract and display error details (handles multiple linters with errors)
                 if grep -q "^--Error detail:" "megalinter-reports/megalinter.log"; then
                   echo ""
                   echo "**Error Details:**"
-                  echo ""
+                  echo ""  
                   echo "\`\`\`"
                   awk '/^--Error detail:/{flag=1;next} /^$/{if(flag) flag=0; next} flag' "megalinter-reports/megalinter.log" | head -150
-                  echo "\`\`\`"
+                  echo "\`\`\`"  
                 fi
               } >> "$GITHUB_STEP_SUMMARY"
             else
