@@ -233,9 +233,11 @@ jobs:
           APPLY_FIXES_MODE: pull_request
           EMAIL_REPORTER: false
           REPORT_OUTPUT_FOLDER: megalinter-reports
-          REPORTERS: sarif,github-pr-review,text
+          REPORTERS: sarif,github-pr-review,text,markdown,markdown-summary
           SARIF_REPORTER: true
           TEXT_REPORTER: true
+          MARKDOWN_REPORTER: true
+          MARKDOWN_SUMMARY_REPORTER: true
           YAML_PRETTIER_FILTER_REGEX_EXCLUDE: "(.github/*)"
           REPORTERS_MARKDOWN_TYPE: simple
         run: |
@@ -283,6 +285,7 @@ jobs:
             -e SARIF_REPORTER \
             -e YAML_PRETTIER_FILTER_REGEX_EXCLUDE \
             -e REPORTERS_MARKDOWN_TYPE \
+            -e MARKDOWN_SUMMARY_REPORTER \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "${{ runner.temp }}/_github_home:/github/home" \
             -v "${{ github.workspace }}:/github/workspace" \
@@ -299,102 +302,25 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         run: |
-          # Write MegaLinter results to job summary for visibility on Actions tab
-          if [ -f "megalinter-reports/megalinter.log" ]; then
-            {
-              echo "## MegaLinter Report"
+          {
+            # Look for markdown summary report - try common filenames
+            if [ -f "megalinter-reports/megalinter-report.md" ]; then
+              cat "megalinter-reports/megalinter-report.md"
+            elif [ -f "megalinter-reports/MARKDOWN_SUMMARY_REPORTER.md" ]; then
+              cat "megalinter-reports/MARKDOWN_SUMMARY_REPORTER.md"
+            elif find megalinter-reports -maxdepth 1 -name "*.md" -type f | head -1 | xargs -I{} cat {} 2>/dev/null; then
+              true
+            else
+              echo "**DEBUG: Markdown summary file not found**"
               echo ""
-
-              # Extract summary table and convert ASCII to Markdown
-              grep -A 25 "+----SUMMARY" "megalinter-reports/megalinter.log" | head -26 | \
-              awk '
-                BEGIN { header_seen = 0 }
-                NR == 1 { next }  # Skip first separator
-                /^\+/ { next }    # Skip all separators
-                /^\|/ {
-                  # Pipe-separated row
-                  gsub(/^ *\| */, "| ");
-                  gsub(/ *\| *$/, " |");
-                  gsub(/ *\| */, " | ");
-                  if (!header_seen) {
-                    # First data row is headers
-                    print $0;
-                    print "|---|---|---|---|---|---|---|---|---|";
-                    header_seen = 1
-                  } else {
-                    print $0;
-                  }
-                }
-              '
-
+              echo "Available files in megalinter-reports:"
+              echo "\`\`\`"
+              find megalinter-reports -type f | sort
+              echo "\`\`\`"
               echo ""
-              echo "## Errors"
-              echo ""
-
-              # Extract error details from all linters that found issues
-              if grep -q "⚠️.*Linted.*error\|❌.*Linted.*error" "megalinter-reports/megalinter.log"; then
-                sed 's/\x1b\[[0-9;]*m//g' "megalinter-reports/megalinter.log" | \
-                awk '
-                  BEGIN { in_errors = 0; first_error = 1 }
-
-                  # Match linter result lines with errors
-                  /^(⚠️|❌) Linted.*error/ {
-                    if (!first_error) print "```\n"
-                    print $0
-                    in_errors = 1
-                    first_error = 0
-                    next
-                  }
-
-                  # Look for error detail section
-                  in_errors && /^--Error detail:/ {
-                    print "```"
-                    next
-                  }
-
-                  # Capture file paths
-                  in_errors && /^\./ && /\.(yml|yaml|tf|py|js|json|md|sh)$/ {
-                    print $0
-                    next
-                  }
-
-                  # Capture error/warning lines (line:col format)
-                  in_errors && /^[ ]*[0-9]+:[0-9]+/ {
-                    print $0
-                    next
-                  }
-
-                  # Stop capturing when we hit the next linter result or major section
-                  in_errors && /^(⚠️|❌) Linted|^\+|^Successfully|^\[/ && !/^(⚠️|❌) Linted.*error/ {
-                    if (in_errors) {
-                      print "```"
-                      in_errors = 0
-                    }
-                    if (/^(⚠️|❌) Linted.*error/) {
-                      print $0
-                      in_errors = 1
-                      first_error = 0
-                    }
-                    next
-                  }
-
-                  # Also capture lines that look like errors (common patterns)
-                  in_errors && /^[ ]*[0-9]+/ && /error|warning/ {
-                    print $0
-                    next
-                  }
-
-                  END {
-                    if (in_errors) print "```"
-                  }
-                ' | head -200
-              else
-                echo "✅ No errors found"
-              fi
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "MegaLinter reports completed. Detailed results available in the job artifacts." >> "$GITHUB_STEP_SUMMARY"
-          fi
+              echo "MegaLinter reports completed. Check job artifacts for details."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Fix Grype database permissions
         if: ${{ !cancelled() }}
