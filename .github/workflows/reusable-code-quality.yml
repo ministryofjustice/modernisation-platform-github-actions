@@ -340,9 +340,6 @@ jobs:
                   echo "✅ No linting issues found"
                 fi
 
-                # TEST: Intentional shell syntax error for actionlint to catch
-                intentional_error="${undefined_var:?Variable must be set}"
-
                 # Extract detailed error information from SARIF report
                 if [ -f "megalinter-reports/megalinter.sarif" ]; then
                   error_count=$(jq '.runs[0].results | length' "megalinter-reports/megalinter.sarif" 2>/dev/null || echo 0)
@@ -350,7 +347,7 @@ jobs:
                     echo ""
                     echo "**Error Details:**"
                     echo ""
-                    jq -r '.runs[0].results[] | 
+                    jq -r '.runs[0].results[] |
                       "\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine):\(.locations[0].physicalLocation.region.startColumn) \(.level | ascii_upcase): \(.message.text)"' \
                       "megalinter-reports/megalinter.sarif" 2>/dev/null | head -50 | while IFS= read -r line; do
                       echo "$line"
