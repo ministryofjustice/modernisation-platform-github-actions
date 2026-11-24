@@ -332,7 +332,7 @@ jobs:
                   grep "Linted.*error" "megalinter-reports/megalinter.log" | sed 's/[✅❌⚠️]//g; s/\x1b\[[0-9;]*m//g'
                 else
                   echo "✅ No linting issues found"
-                fi
+                fi  
 
                 # Extract and display error details
                 if grep -q "^--Error detail:" "megalinter-reports/megalinter.log"; then
